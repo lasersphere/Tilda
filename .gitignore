@@ -1,0 +1,6 @@
+/.idea/
+/build/
+/venv/
+/venv32/
+/Tilda.egg-info/
+/Tilda/TildaTarget/Labview14/FPGA Bitfiles/

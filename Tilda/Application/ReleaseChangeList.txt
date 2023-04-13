@@ -1,0 +1,423 @@
+"""
+Change list between releases with the info on fixes, major changes etc., last changes always on top.
+To identify links use: (htt...)
+"""
+
+
+
+***************************************   Changes for version 1.25.0 ***************************************
+
+Summary (find details below):
+Tilda is now updated to the newer Python version and works with new TRITON. An Options menu is now used to define
+local options for measurements. The ROC21 version has been merged to the release.
+
+TILDA
+Added:
+    - Replace PYRO4 (Tilda with new TRITON)
+        * Added new backend and updated TritonObject and DeviceBase to the new version of Triton. Pre/Post scan
+          measurements already work, ScanDevice couldn't be tested yet. (776d7004)
+        * Updated the Triton Backend classes, TritonObject, TritonDeviceBase and TritonScanDeviceBase to the latest
+          version from the new Triton master branch. Changes are completely untested so far, so don't merge into release
+          or master just yet. (7059c1bb)
+        * Some cleanup to remove all the Pyro references in TildaStart etc.
+        (https://app.asana.com/0/10893101573162/1200969717497502/f)
+
+    -  Option to pass individual errors in trs-files
+        must be named 'errorArray' in xml and have the same format as 'scalerArray'.
+
+    - Options Menu
+        'Options' tab in the main menu where basic settings can be defined. For example an option to completely disable
+        all triton functionality in cases where no triton is used or the new 'guess_offset' function of Pollifit.
+          * Added the class Options for storing local settings.
+          * Added an option GUI
+        Main.py:
+          * created options-object
+          * use ini file for loading and storing options
+          * new function "create_standard_ini"
+          * new function "read_ini"
+
+    - Frequency Multiplicator
+        The laser frequency can now be user-defined in the options menu. The laser frequency is now calculated from the
+        users input and the users input is written to the options.ini. For further processes the use laserfreq from is
+        taken from the options class
+          * added a Frequency UI
+          * new function "calc_freq"
+          * added a default option.yaml file
+
+    - ROC21 version
+
+    - Example on how to use C++ with Python or numpy inside the Tilda/source/Scratch folder.
+
+Improved:
+    - The Ui_TrackPar had gone pretty big, so an alternative 2-column design that should be a little better to use was
+      created
+
+    - Updates to ReconstructRawData
+        allows to filter by scan numbers
+          * Now allows to specify start/stop SCANS as well as bunches.
+          * Only works with TRS data so far! No CS! (Could be implemented though)
+          * No advanced combination sets as with bunches
+        This required some changes to Tilda Nodes as well:
+          * There is a scan_start_stop_tr_wise parameter which defaults to None
+          * If None, everything should be the same as before!
+          * Else the pipe discards all pmt events which don't match scan bounds.
+
+    - Update to newer python Version
+
+    - 'Help' Tab
+        Version Info now also displays current branch and commit.
+
+    - Sum window
+        Now user specific math operation with different scalers in "sum" window additionally to the usual summing of
+        all scalers can be defined and used. Often used functions are saved in the options file and can be chosen
+        in a dropdown menu
+        Changes have been done to:
+          * SpecData: getArithSpec, getSingleSpec
+          * LiveDataPlottingUi: line_edit_changed, update_projections_arith, new_data, self.function (added)
+          * PyQtGraphPlotter: plot_all_sc, update_sum_plot, update_sum_plot_arith
+
+Fixed:
+    - 'lost' counts
+        Now the events are first separated into the individual pmt's including multi-fire cases and only afterwards the
+        unique np.arrays are created.
+        Old raw data can be re-analyzed with the new pipeline to reconstruct the real data. A small update to
+        'ReconstructRawData.py' is included (Better documentation + Option to change the list of active PMTs).
+
+POLLIFIT
+Added:
+    - Monte-Carlo King-Fit
+        Added a multidimensional Monte-Carlo King-Fit module based on the algorithm described in the supplement of
+        [Gebert et al., Phys. Rev. Lett. 115, 053003 (2015)] and the existing KingFitter module.
+        * Both, Field-shift factors (differences of mean square charge radii) and ratios (isotope shifts) can be
+          determined using the KingFitter or the KingFitterRatio class, respectively.
+        * An arbitrary number n of electronic transitions can be used to perform the King-Fit.
+        * This results in an (n+1)-dimensional fit for the KingFitter class and an n-dimensional fit for the
+          KingFitterRatio class.
+        * The fit considers the correlations between the axes due to their common dependence on the isotope masses.
+          This becomes extremely important if the relative uncertainties of the masses are larger than those of the
+          isotope shifts or charge radii.
+
+    - Offsets for non-overlapping tracks
+        * FullSpec:
+          - Individual offsets are assigned to each additional non-overlapping track if there is more than one track.
+          - The offset parameters have to be added via the "add_track_offsets" method which expects a dictionary of
+            voltages to cut the x-axis as well as the laser frequency and the col/acol information of the current file.
+        * SPFitter:
+          - The information where to cut the x-axis for the track offsets is extracted here and handed over to the
+            FullSpec on initialization via the "add_track_offsets" method.
+          - A line was added which raises an error if tracks are overlapping each other since this could lead to
+            ambiguous x-values. However, it was commented out for now to not prevent plotting of the spectrum.
+
+    - class HyperfineN as a subclass to Hyperfine
+        creates the specified number of number of peaks instead of a single one.
+        Each additional peak comes with two parameters for its position and intensity relative to the first peak.
+        Note that after changing 'nPeaks', the parameters have to be saved to the database and the spectrum has to be
+        reloaded, since changing 'nPeaks' changes the parameter space.
+        * FullSpec:
+          - Replaced Hyperfine by HyperfineN.
+          - replaced exec() and eval() by setattr() and getattr(), respectively.
+        * MPLPlotter:
+          - added an if-query to not wrongly rescale the satellite peaks of the AsymmetricVoigt in the additional peaks
+            from HyperfineN.
+
+    - AsymmetricVoigt
+        * Changed the label of the "number of peaks"-parameter from 'nOfPeaks' to 'nPeaksAsym' to make this
+          shape-specific parameter stand out from the general "number of peaks"-parameter 'nPeaks' from the HyperfineN
+          class.
+        * Databases with the previous label are still loaded correctly. The new label is used when saving the parameters
+          to database. Databases with the new label require this update to be used with PolliFit.
+
+    - new parameter "guess_offset"
+        guess_offset in FullSpec.py allows to guess the offset parameter based on the actual counts. Must be activated
+        as an option in batchFit or interactiveFit. Default is off (as it always was).
+
+    - new option "safe_to_folder"
+        can be set in batchFit and allows manual change of the output folder for the fit .png's. Default is None (use
+        data folder, typically 'Sums').
+
+    -  New spectra "ThermalVoigt" and "ThermalGradientVoigt"
+        * FullSpec.py:
+          In evaluate(), x is cast to an array and before further code is executed, an empty array is returned if x is
+          empty.
+        * Physics.py:
+          - Added the first lemniscate constant (pi * G where G is Gauss's constant).
+          - Added a PDF (source_energy_pdf) which lives in the frequency space of accelerated ions. It describes the
+            distribution of ions which initially had thermally and normal distributed kinetic energies along the
+            acceleration axis. Mathematically, this is a convolution of a chi-squared distributed random variable with
+            one degree of freedom and a normal distribution. Energies approximately transform linearly to frequencies.
+        * LorentzQI.py:
+          Added a factor 0.5 to the interference term which is also missing in the paper
+          [Brown et al., Phys. Rev. A 87, 032504 (2013)].
+        * ThermalPseudoVoigt.py:
+          Removed the second peak, since n extra peaks are available now for arbitrary Spectra.
+        * ThermalVoigt.py:
+          A new spectrum which is physically analog to the ThermalPseudoVoigt. Instead of a linear combination the
+          thermalLorentz function is numerically convoluted with a Gauss distribution.
+        * ThermalGradientVoigt.py:
+          A new spectrum which is physically analog to the ThermalPseudoVoigt and ThermalVoigt. This spectrum is much
+          more robust, however, might have longer fitting times than the ThermalVoigt spectrum. It is a numerical
+          convolution of the 'source_energy_pdf' with a Lorentz profile. It does not fail if the compression/xi
+          parameter is too high or too low.
+
+    - 'FitRoutines.py' script
+        to PolliFit which contains different fitting routines.
+        At the moment only the the algorithm from [York et al., American Journal of Physics 72, 367 (2004)] is
+        implemented, however, the script is set up to contain arbitrary fitting routines.
+
+    - relative peak intensities
+        can now be set fixed / free in the db. you can now manually add, e.g. {..., 'Int5': False} to leave only the
+        intensity of peak number five free (maybe you only measured a few peaks)
+
+Improved:
+
+    - SpecData.getArithSpec: Changed nrScalers >= np.abs(s) to > since s is zero based.
+
+    - Methods in SpecData.py, SPFitter.py, FullSpec.py and Physics.py do fully utilize numpy arrays during fitting.
+      (https://app.asana.com/0/10893101573162/1200969717497500/f)
+
+    - Revisited PolliFit tabs:
+        * The following tabs got improvements towards functionality and user-friendliness:
+          Averager, AsciiConv, Moments, Alive.
+        * The following tabs had crashes fixed: Averager, AsciiConv, Moments, Alive, AccVolt, AddFiles.
+        * The following tabs were disabled, because they are not working at the moment: IsoShift, KingFit.
+          These will be updated in the future.
+        * Improved code formatting.
+
+    - Simulation tab:
+        * Now laser frequencies are calculated on-the-fly by setting a voltage for a specific isotope.
+        * Added the option to set equal intensities for all isotopes.
+        * The charge state of the isotopes is considered when using the amplifier now.
+        * The two laser frequency inputs were colorized.
+        * The Simulation tab allows the user to choose the charge state of an atom when scanned now.
+        * The x-axis units are displayed in the window now.
+        * The checkboxes correctly enable and disable interfering options now.
+        * Added a parameter table for the lineshapes to the Simulation tab.
+        * Changed all non-frequency x-axis units to Volts.
+
+    - Averager tab:
+        * Added the option to choose between weighted and unweighted average.
+        * Added the option to estimate the uncertainty of the average from the standard deviation of the data
+          instead of calculating it from the given errorbars.
+
+    - ALIVE tab:
+        * Changed the behaviour of the "compare to next/previous" button.
+          This now directly compares all available measurements in the db pairwise and in time-order.
+
+    - AsciiConv tab:
+        * Added descriptions for some of the required inputs.
+        * Added two buttons to add or remove scalers easily.
+
+    - DBIsotope:
+        * A parameter 'q' was added which holds the charge state. The charge state was already used to reduce the
+        mass of the isotope by subtracting the respective number of electron masses and now is also used in the
+        Simulation tab of PolliFit.
+
+    - Tools.plotIso:
+        * The 'norm' parameter was added to norm the maximum y value to 100 (%).
+        * The redundancy of the legend was reduced.
+        * Plotting Voltages instead of eV is correctly displayed in the legend now.
+
+    - Spectra.Voigt:
+        * An 'fwhm' function was added to return the full width at half maximum of the Voigt profile.
+        * The functions 'leftEdge' and 'rightEdge' were adjusted using the new 'fwhm' function.
+        * The line with 'p_offset_slope' was removed from the 'getPars' function. This parameter is handled in
+          'FullSpec'.
+
+    - Lorentz:
+        * The left- and rightEdge were adjusted to 5 times the fwhm.
+
+    - Minor changes in Pollift:
+        * Added a missing factor 2 in the calculation of the first order of the "thermalLorentz" method.
+        * All parameters are written to the db fitResults now.
+        * KingFitter now correctly uses the x-error when finding best alpha + A custom plot folder can now be specified
+          when creating the KingFitter.
+        * in Kingplots popup graphics can be suppressed now. Default: popup=True.
+        * MC King fitter moved correlation() to class function to allow fix alpha.
+        * MC King fitter can now save graphics as file to folder.
+        * BatchFit.py will now create the save-to folder if it does not exist.
+        * TildaTools.select_from_db: Updated the docstring.
+        * ColAcolTools: Added type casting to float in two lines.
+
+
+
+***************************************   Changes for version 1.24 ***************************************
+
+Summary (find details below):
+
+TILDA is now also deployed at CRYRING and this brought a couple of big changes. It is now possible to trigger scans,
+steps and bunches separately. Furthermore, TILDA can now work with external scan devices connected through triton instead
+of the internal dac only. That means laser-scanning is now possible! A new Job Stacker Ui extends the automation of long
+scan routines with different isotopes and track settings. The overall stability has been improved.
+
+Added:
+    - Scan Device Selection
+        TILDA is now able to use a whole range of scan devices. On the hardware level (FPGA) we now differentiate
+        between 'internalDAC' and 'externalTriton'. The 'internalDAC' option, is basically the old operation mode for
+        voltage scanning output on the DAC card that's installed in the linedriver crate. The 'externalTriton' mode
+        tells the FPGA to not set any voltage steps but send a 'nextStepRequest' software signal back to TILDA and
+        wait for the 'scanDevSet' global variable to change back to True before continuing with the scan.
+        The 'DAC' and 'Triton' options are then also available as scan device classes in the track pars UI.
+        (https://app.asana.com/0/0/1156374973115046/f)
+
+    - Advanced Triggering
+        Originally from a Cryring request, we expanded TILDAs trigger capabilities. Previously there was only one trigger,
+        which started the measurements at the lowest level, so basically each bunch (or step when in cs mode). Now there
+        is the option to trigger scans, steps and bunches. All of these are configured in the track settings with the old
+        trigger named 'meas Trigger'. This one is ultimately still responsible for the timing.
+        On the hardware level the new triggers are implemented at the same place as the old one. Scan and step triggers
+        can be activated in any order and once both are high, the measurement trigger is armed.
+        (https://app.asana.com/0/0/1156374973115045/f)
+        (https://app.asana.com/0/10893101573162/921223064715003/f)
+
+    - Job Stacker Ui
+        A new 'Job Stacker' Ui is available from the TILDA main menu under 'Tools' or using the shortcut Ctrl+J.
+        The Ui allows to add multiple scans to a list of jobs that will be executed one after the other. Adding a new
+        job is done through the classic 'Scan Control' window where an isotope can be selected, tracks edited and a
+        number of repetitions on file set. Closing the Scan Control window adds the job to the list. Each job can be
+        repeated a couple of times. The final job list can be stored to a text file and loaded back into the job stacker
+        at a later time. Execution is done through the Scan Control windows again automatically. The Job Stacker is
+        really just a helper-UI and only loads predefined scan settings into the control before executing an ergo.
+        (https://app.asana.com/0/10893101573162/1109678433755636/f)
+
+    - 20 Bit DAC
+        Up to now, only the AD5781 18-Bit DAC was supported by TILDA. For a test with the TREK (x1000) Amplifier we
+        changed TILDA to full 20-Bit compatibility. Depending on the DAC card in use, the interface will allow 18- or
+        20-bit precision. The calculated number of bits is chosen automatically based on the device name in the DAC
+        calibration file. That means old measurements can be loaded, if the original calibration file is provided with
+        the measurement.
+        (https://app.asana.com/0/10893101573162/1136324508377297/f)
+
+Improved:
+
+    - Rebinning UI interaction
+        New data doesn't overwrite the users input to the spinBox anymore, making it possible to just type the desired
+        value instead of wildly scrolling to it. See also under Fixed.
+        (https://app.asana.com/0/10893101573162/697937483809958/f)
+
+    - TrackParsUi wide display
+        Since the TrackPars ui did grow a lot over the last time, it often became to big for the screen and thus buttons
+        were out of sight. Now there is a Ui_TrackPar_Wide that splits the track settings into two columns instead of one
+        so it should fit much better on the screens. The old Ui_TrackPar is still there and only the import line in
+        TrackUi.py has to be changed to get it back in case someone really insists on having it.
+        (https://app.asana.com/0/10893101573162/1157437526547601/f)
+
+    - Dummy cs and trs can now pause
+        Pausing a dummy didn't work until now and even threw an error because the function definition from SequencerCommon
+        wasn't overwritten in the dummies. Now the dummies correctly stop emitting data and resume after the pause.
+        Halt in dummy mode however does not finish after the scan but aborts immediately due to how dummy data works.
+        (https://app.asana.com/0/10893101573162/1156557152553731/f)
+
+    - Continous Sequencer Dummy can now simulate a kepco scan
+        The dummy now checks whether it's a kepco scan and behaves accordingly together with the DMMdummy.
+        In order to get this right, you have to select 'dummy' as your during scan multimeter and make sure measurement
+        compl. dest. as well as trigger source are set to 'software'. This is preconfigured in the 'kepco' settings.
+        During the kepco scan, the dummy-dmm will emit the number of triggers it received and NOT the set voltage, just
+        to make it obvious, that it is not a real measurement. So voltage should equal step number.
+        (https://app.asana.com/0/10893101573162/1156776314874473/f)
+
+    - Couple of minor pollifit changes
+        * KingFitter.py: Added more prints of results (S.Kaufmann)
+        * InteraciveFit.py: Updated "save pars" (P.Imgram)
+        * Added option charge=1 for diffDoppler() (P.Imgram)
+        * ThermalPseudoVoigt: removed par sigma, improved description (P. Mueller)
+        * Minor adjustments in AliveTools.py - correction of some rel. Doppler (P.Imgram)
+        * Added a simulation tab to mainUi.py (P.Imgram)
+
+Fixed:
+
+    - Crash while rebinning
+        Changing the rebinning during a scan should no longer be able to crash TILDA. New data doesn't mess with the
+        spinBox lock anymore while the user changes the rebinning. Also, a one second time lock now prevents the user
+        from rebinning too often. Compare to 'Improved' as well.
+        (https://app.asana.com/0/10893101573162/697937483809958/f)
+
+    - Lock of scan settings
+        While scanning you can no longer mess with the settings of the active isotope. You can still view track settings,
+        but not confirm changes, add or remove a track of the currently scanning isotope.
+        (https://app.asana.com/0/10893101573162/697937483809958/f)
+
+    - Fix limit for wait after reset
+        Changed the doubleSpinBox_waitAfterReset_muS maximum from prev 4200000.0 to 2**32 and removed decimals, one step
+        is 1 because the counter in labview is in us 32bit units...
+        (https://app.asana.com/0/10893101573162/984499362106560/f)
+
+    - Fixed: Scan not working after Isotope change
+        (https://app.asana.com/0/10893101573162/875813760907611/f)
+
+
+
+***************************************   Changes for version 1.23 ***************************************
+
+Summary (find details below):
+
+This is the start of the Changelog for Tilda, major changes will be summarized
+at the beginning of each release log, followed by a short but detailed description
+of added features, improvements and bug fixes. Links to the relevant Asana tasks are helpful.
+
+
+A script for the selective analysis of only some bunches per step was implemented.
+Also the analysis of the data was considerably improved and does not block the Graphical User Interface
+anymore by blocking the global interpreter lock.
+Also some relevant bug fixes, from fixing the plot display to some improvements of
+an unwanted dependency of the pre-/during- scan measurement.
+
+
+Added:
+    - Change log between releases (https://app.asana.com/0/10893101573162/639157258301625/f)
+
+    - Script for analysis of only some bunches:
+        User can select which bunches to analyse, best is to see in Scratch/ReconstructRawData.py
+        As requested in (https://app.asana.com/0/10893101573162/113240495951759/f)
+
+    - for Agilent3458A an option to adjust the number of power line cycles (NPLC) was added.
+
+    - export function for the currently shown time resolved view, as a .pgn of the whole window and
+      all currently shown plots are saved as .png, .svg and .csv. The user is asked to choose the storage location.
+      Currently only supported in time resolved plot.
+      Shortcut: Strg + S
+
+Improved:
+
+    - dummy data constructed in TimeResolvedSequencerDummy is now of better quality since there is
+      always a 10ns gap in the time axis and the pattern is repeated if it does not fit over all steps.
+      Also number of bunches will be relevant.
+      It is also possible to have a count in every bin, to stress the memory as much as possible,
+      therefore one has to set count_in_every_bin=True in self.data_builder(...)
+      (https://app.asana.com/0/10893101573162/699498449314201/f)
+
+    - Analysis of time resolved data was improved:
+        as before, incoming raw data is translated to zero free data array
+        (scaler_number, line_voltage_step_number, time_stamp, number_of_counts)
+        but now instead of appending this to a zero free sum array of all counts, this short array is translated to a
+        full non zero free matrix, which is then added to the sum matrix, this goes rather quick and the
+        sorting algorithm for sorting raw_data->zero_free_array->full_matrix stays rather at the same speed and
+        does not increase towards the end of the scan by more incoming data.
+        Before the sorting algorithm took rather long and it could not be interrupted therefore
+        the analysis thread could not be interrupted from the global interpreter lock (GIL) and the GUI was "frozen".
+        (https://app.asana.com/0/10893101573162/684292750460327/f)
+
+    - replaced remaining print(..) calls by appropiate logging.something(..) calls
+    (https://app.asana.com/0/10893101573162/686607755696863/f)
+
+Fixed:
+
+    - a-axis in time resolved plot and voltage projction now matches range, before it was a little bit offset.
+      Same for y-axis in time projection and the corresponding y-axis in time resolved plot
+    - If Timeout occurs in pre-/post meas the dialog is not modal anymore, so scan can continue without user input.
+      (https://app.asana.com/0/10893101573162/705131685031306/f)
+    - fixed "breathing" of plotrange (https://app.asana.com/0/10893101573162/705027703451576/f)
+    - fixed communication with Agilent3458A (https://app.asana.com/0/10893101573162/807169587029550/f)
+    - fixed issue with during scan measurement preparation, which was before dependent on the pre scan measurement
+      and would not start a triton / dmm measurement depending on the pre scan
+      (https://app.asana.com/0/10893101573162/805241150974142/f)
+      (https://app.asana.com/0/10893101573162/773897941897101/f)
+    - fixed behavior of all Nodes, when the scan was stopped before data was coming in
+      (https://app.asana.com/0/10893101573162/635091025014538/f)
+    - Outbit Ui -> step/Scan number input was limited to 99, replaced with 99999999
+    - working time for each track was not saved properly in some cases this was fixed by introducing the nodes
+      NAddWorkingTimeOnStart(...) and by adding the working time also in the stop() call in the node
+      NMPLImagePlotAndSaveSpecData(...)
+      (https://app.asana.com/0/10893101573162/773897941897102/f)
+
+
+***********************************************************************************************************************
