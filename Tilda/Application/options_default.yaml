@@ -21,3 +21,6 @@ FPGA:
 
 FUNCTIONS:
   0: '[0]'
+
+SPECIAL:
+  xml_resolution_ns: 10

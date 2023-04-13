@@ -16,6 +16,7 @@ import matplotlib
 
 import Tilda.Application.Config as Cfg
 from Tilda.Service.FileOperations.FolderAndFileHandling import check_config_dir
+from Tilda.Service import LoggingUtil
 
 matplotlib.use('Qt5Agg')
 _cyclic_interval_ms = 50
@@ -40,10 +41,11 @@ def main():
 
     debug_file = os.path.join(Cfg.config_dir, 'Logs', 'debug')
     error_file = os.path.join(Cfg.config_dir, 'Logs', 'err')
+    timing_file = os.path.join(Cfg.config_dir, 'Logs', 'timing')
 
     app_log = logging.getLogger()
     # app_log.setLevel(getattr(logging, args.log_level))
-    app_log.setLevel(logging.DEBUG)
+    app_log.setLevel(logging.NOTSET)
 
     ch = logging.StreamHandler(sys.stdout)
     ch.setLevel(getattr(logging, args.log_level))
@@ -62,6 +64,15 @@ def main():
     my_err_handler.setFormatter(log_formatter)
     my_err_handler.setLevel(logging.ERROR)
     app_log.addHandler(my_err_handler)
+
+    LoggingUtil.add_logging_level('TIMING', 5)  # create a new logging level for timing even below DEBUG(10)
+
+    my_time_handler = RotatingFileHandler(timing_file, mode='a', maxBytes=5 * 1024 * 1024,
+                                          backupCount=1, encoding=None, delay=False)
+    my_time_handler.setFormatter(formatter)
+    my_time_handler.setLevel(logging.TIMING)
+    my_time_handler.addFilter(LoggingUtil.LevelFilter(5, 5))  # Filter to only show timings
+    app_log.addHandler(my_time_handler)
 
     app_log.info('****************************** starting ******************************')
     app_log.info('Config directory set to ' + Cfg.config_dir)

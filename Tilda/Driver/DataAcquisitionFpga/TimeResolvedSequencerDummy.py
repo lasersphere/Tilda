@@ -165,7 +165,8 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         logging.debug('starting to build artificial data for dummy trs for track %s' % track_name)
         logging.debug('num of steps: %s num of bins: %s num of bunches: %s num of scans: %s ' %
                       (trackd['nOfSteps'], trackd['nOfBins'], trackd['nOfBunches'], trackd['nOfScans']))
-        count_in_every_bin = False  # set this to True to completly fill the time resolved matrix
+        count_in_every_bin = True  # set this to True to completly fill the time resolved matrix
+        # TODO: This would be something for the options as well?!
         one_scan = self.build_one_scan(scanpars, trackd, track_ind, full=count_in_every_bin)
         one_scan_inverted = self.build_one_scan(scanpars, trackd, track_ind, True, full=count_in_every_bin)
         logging.debug('length of one_scan: %d, length of one_scan_inverted: %d'
@@ -181,6 +182,8 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
 
     def build_one_scan(self, scanpars, trackd, track_ind, inverted=False, full=False):
         """ build data for one scan """
+        # TODO: add a simulated countrate (e.g. 1kHz) that will change pattern depending on rate and num_bins
+        # TODO: add a dummy-configuration to the options or the GUI?
         num_bins = trackd['nOfBins']
         num_steps = trackd['nOfSteps']
         num_bunches = trackd['nOfBunches']
@@ -311,7 +314,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
             if self.pause_bool:  # scan is paused, return no data
                 return result
             else:
-                max_read_data = 2000
+                max_read_data = 200000
                 n_of_read_data = 0
                 if result['elemRemainInFifo'] > 0:
                     n_of_read_data = min(max_read_data, result['elemRemainInFifo'])
@@ -322,7 +325,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
                 if result['elemRemainInFifo'] == 0:
                     self.status = TrsCfg.seqStateDict['measComplete']
                 elapsed = datetime.now() - st
-                # logging.debug('reading from dummy trs sequencer took %.1f ms ' % (elapsed.total_seconds() * 1000))
+                logging.timing('reading from dummy trs sequencer took %.1f ms ' % (elapsed.total_seconds() * 1000))
         return result
 
     def getSeqState(self):

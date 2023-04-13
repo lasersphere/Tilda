@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'E:\Users\Patrick\Documents\Python Projects\Tilda\Tilda\Interface\OptionsUi\Ui_Options.ui'
+# Form implementation generated from reading ui file 'E:\Users\Patrick\Documents\Python Projects\TildaMaster\Tilda\Interface\OptionsUi\Ui_Options.ui'
 #
-# Created by: PyQt5 UI code generator 5.13.2
+# Created by: PyQt5 UI code generator 5.14.1
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -115,6 +115,40 @@ class Ui_Dialog_Options(object):
         spacerItem2 = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         self.verticalLayout_2.addItem(spacerItem2)
         self.tabWidget.addTab(self.tab_generalSettings, "")
+        self.tab_special = QtWidgets.QWidget()
+        self.tab_special.setObjectName("tab_special")
+        self.verticalLayout_5 = QtWidgets.QVBoxLayout(self.tab_special)
+        self.verticalLayout_5.setObjectName("verticalLayout_5")
+        self.horizontalLayout = QtWidgets.QHBoxLayout()
+        self.horizontalLayout.setObjectName("horizontalLayout")
+        self.spinBox_xmlResolution = QtWidgets.QSpinBox(self.tab_special)
+        self.spinBox_xmlResolution.setEnabled(True)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Maximum, QtWidgets.QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.spinBox_xmlResolution.sizePolicy().hasHeightForWidth())
+        self.spinBox_xmlResolution.setSizePolicy(sizePolicy)
+        self.spinBox_xmlResolution.setPrefix("")
+        self.spinBox_xmlResolution.setMinimum(10)
+        self.spinBox_xmlResolution.setMaximum(100000)
+        self.spinBox_xmlResolution.setSingleStep(10)
+        self.spinBox_xmlResolution.setObjectName("spinBox_xmlResolution")
+        self.horizontalLayout.addWidget(self.spinBox_xmlResolution)
+        self.label_2 = QtWidgets.QLabel(self.tab_special)
+        self.label_2.setEnabled(True)
+        self.label_2.setObjectName("label_2")
+        self.horizontalLayout.addWidget(self.label_2)
+        self.checkBox_autoResolution = QtWidgets.QCheckBox(self.tab_special)
+        self.checkBox_autoResolution.setEnabled(False)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Maximum, QtWidgets.QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.checkBox_autoResolution.sizePolicy().hasHeightForWidth())
+        self.checkBox_autoResolution.setSizePolicy(sizePolicy)
+        self.checkBox_autoResolution.setObjectName("checkBox_autoResolution")
+        self.horizontalLayout.addWidget(self.checkBox_autoResolution)
+        self.verticalLayout_5.addLayout(self.horizontalLayout)
+        self.tabWidget.addTab(self.tab_special, "")
         self.verticalLayout.addWidget(self.tabWidget)
         self.buttonBox_okCancel = QtWidgets.QDialogButtonBox(Dialog_Options)
         self.buttonBox_okCancel.setOrientation(QtCore.Qt.Horizontal)
@@ -123,7 +157,7 @@ class Ui_Dialog_Options(object):
         self.verticalLayout.addWidget(self.buttonBox_okCancel)
 
         self.retranslateUi(Dialog_Options)
-        self.tabWidget.setCurrentIndex(0)
+        self.tabWidget.setCurrentIndex(1)
         self.buttonBox_okCancel.accepted.connect(Dialog_Options.accept)
         self.buttonBox_okCancel.rejected.connect(Dialog_Options.reject)
         QtCore.QMetaObject.connectSlotsByName(Dialog_Options)
@@ -151,3 +185,8 @@ class Ui_Dialog_Options(object):
         self.link_openSoundsFolder.setDescription(_translate("Dialog_Options", "Go to Folder to add or remove sounds from the random rotation."))
         self.pushButton_chooseSoundsFolder.setText(_translate("Dialog_Options", "Choose Sounds Folder"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_generalSettings), _translate("Dialog_Options", "General"))
+        self.spinBox_xmlResolution.setSuffix(_translate("Dialog_Options", " ns"))
+        self.label_2.setText(_translate("Dialog_Options", "Maximum xml-resolution (raw data always 10ns)"))
+        self.checkBox_autoResolution.setToolTip(_translate("Dialog_Options", "Let TILDA estimate the array size and limit the resolution accordingly to avoid MEMORY erros. "))
+        self.checkBox_autoResolution.setText(_translate("Dialog_Options", "Adapt Automatically"))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_special), _translate("Dialog_Options", "Special"))

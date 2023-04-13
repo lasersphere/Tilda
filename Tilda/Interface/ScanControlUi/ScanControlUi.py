@@ -123,7 +123,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         acq_on_file_in_dict = isinstance(
             Cfg._main_instance.scan_pars[self.active_iso]['isotopeData'].get('continuedAcquisitonOnFile', False), str)
         if ergo and acq_on_file_in_dict:
-            # if its an ergo an continuedAcquisitonOnFile is already written to scandict, this must be deleted:
+            # if its an ergo and continuedAcquisitonOnFile is already written to scandict, this must be deleted:
             Cfg._main_instance.scan_pars[self.active_iso]['isotopeData'].pop('continuedAcquisitonOnFile')
         if ergo:
             # if its an ergo we do not want any old readings of dmms or triton devs in the scandict

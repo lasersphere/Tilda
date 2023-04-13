@@ -267,10 +267,10 @@ def time_rebin_all_data_slow(full_data, bins_to_combine):
 def time_rebin_all_data(full_data, scan_dict):
     """
     use this function to perform a rebinning on the time axis.
-    This means, alle bins within "bins_to_combine" will be summed up.
+    This means, all bins within "bins_to_combine" will be summed up.
     length of the output array for each voltage step will be:
         original length // bins_to_combine
-    therefore some values in the end migth be dropped.
+    therefore some values in the end might be dropped.
     e.g. 10 // 3 = 3 -> last bin is ignored.
     :param full_data: full time resolved scaler array, with all tracks
     :param bins_to_combine: int, number of 10 ns bins that will be combined
@@ -297,7 +297,7 @@ def rebin_single_track(tr_ind, tr_data, tr_list, return_data, scan_dict):
 def time_rebin_all_spec_data(full_data, software_bin_width_ns, track=-1):
     """
     use this function to perform a rebinning on the time axis.
-    This means, alle bins within "bins_to_combine" will be summed up.
+    This means, all bins within "bins_to_combine" will be summed up.
     length of the output array for each voltage step will be:
         original length // bins_to_combine
     therefore some values in the end migth be dropped.
@@ -306,39 +306,54 @@ def time_rebin_all_spec_data(full_data, software_bin_width_ns, track=-1):
     :param software_bin_width_ns, list, software bin width for all tracks
     :return: rebinned full_data
     """
+    logging.timing('starting time_rebin_all_spec_data')
     bins = deepcopy(software_bin_width_ns)
-    newdata = deepcopy(full_data)
-    if track == -1:
-        # newdata.time_res = []
-        for tr_ind, tr_data in enumerate(full_data.time_res):
-            newdata.time_res[tr_ind] = rebin_single_track_spec_data(tr_data, [], bins[tr_ind])
-            newdata.t[tr_ind] = time_axis_rebin(tr_ind, full_data.t, bins[tr_ind])
+    try:
+        # get xml file resolution from the specdata object
+        xml_res = full_data.xml_resolution_ns
+    except AttributeError as attr_e:
+        logging.warning('xml_resolution not specified in specdata. Working with 10ns raw-resolution')
+        xml_res = 10  # old files have 10ns resolution always
+
+    if np.all(np.array(bins) == xml_res):
+        # no rebinning necessary! stop here...
+        logging.timing('aborted time_rebin_all_spec_data because no rebinning necessary')
+        return full_data
+
+    newdata = deepcopy(full_data)  # TODO: TIMING: Deepcopy takes tiiiiiime!
+    logging.timing('finished with deepcopy')
+
+    for tr_ind, tr_data in enumerate(full_data.time_res):
+        if track == tr_ind or track == -1:  # -1 means all tracks
+            # check whether the software_bin_width_ns is a good value (i.e. a multiple of xml_res)
+            bin_width = TildaTools.check_software_gate_validity(bins[tr_ind], xml_res)
+            newdata.time_res[tr_ind] = rebin_single_track_spec_data(tr_data, [], bin_width, resolution_xml_ns=xml_res)
+            logging.timing('done rebin_single_track_spec_data')
+            newdata.t[tr_ind] = time_axis_rebin(tr_ind, full_data.t, bin_width, resolution_xml_ns=xml_res)
             pmts, steps, bin_nums = newdata.time_res[tr_ind].shape
             newdata.t_proj[tr_ind] = np.zeros((pmts, bin_nums))
-            full_data.softBinWidth_ns[tr_ind] = bins[tr_ind]
-            newdata.softBinWidth_ns[tr_ind] = bins[tr_ind]
-    else:
-        tr_ind = track
-        tr_data = newdata.time_res[tr_ind]
-        newdata.time_res[tr_ind] = rebin_single_track_spec_data(tr_data, [], bins[tr_ind])
-        newdata.t[tr_ind] = time_axis_rebin(tr_ind, full_data.t, bins[tr_ind])
-        pmts, steps, bin_nums = newdata.time_res[tr_ind].shape
-        newdata.t_proj[tr_ind] = np.zeros((pmts, bin_nums))
-        full_data.softBinWidth_ns[tr_ind] = bins[tr_ind]
-        newdata.softBinWidth_ns[tr_ind] = bins[tr_ind]
+            full_data.softBinWidth_ns[tr_ind] = bin_width
+            newdata.softBinWidth_ns[tr_ind] = bin_width
+
+    logging.timing('finished time_rebin_all_spec_data')
     return newdata
 
 
-def rebin_single_track_spec_data(tr_data, return_data, bin_width_10ns):
+def rebin_single_track_spec_data(tr_data, return_data, bin_width_10ns, resolution_xml_ns=10):
     """
     by rolling the array as often as there are bins to combine and summing every roll,
     the desired indices will hold the sum.
+    :param tr_data: dict: track data taken from the full spec data xmlImporter object
+    :param return_data: list: deprecated
+    :param bin_width_10ns: int: software bin width for this track # TODO: This is not 10ns but ns, right?! Traceback!
+    :param resolution_xml_ns: int: optional, can be passed when the resolution of the xml is deliberately reduced
+    :return: changed tr_data
     """
     start_t = dt.now()
-    bins_to_combine = int(bin_width_10ns / 10)
+    bins_to_combine = int(bin_width_10ns / resolution_xml_ns)
     scaler, steps, time_bins = tr_data.shape
     total_elements = scaler * steps * time_bins
-    n_time_bins = time_bins // bins_to_combine
+    n_time_bins = time_bins // bins_to_combine  # TODO: Make sure this can't be integer division or modulo by zero
     max_bin = n_time_bins * bins_to_combine
     # time_bins // n_time_bins might have a remainder
     # -> time axis of the tr_data cannot be split into the given number (/width) of time bins without a remainder
@@ -346,9 +361,10 @@ def rebin_single_track_spec_data(tr_data, return_data, bin_width_10ns):
     tr_data = tr_data[:, :, :max_bin]  # cut of last time steps, if it max_bin is not equal the end
     # expand the matrix along the time axis with the given number of bins and take the sum over this axis:
     try:
-        tr_data = tr_data.reshape(scaler, steps, n_time_bins, time_bins // n_time_bins).sum(3)
+        tr_data = tr_data.reshape(scaler, steps, n_time_bins, bins_to_combine)
+        tr_data = tr_data.sum(3)  # TODO:TIMING: this seems to be the bottleneck in this function
     except Exception:
-        pass
+        logging.exception('Fatal problem while reshaping track data')
     # old:
     # bins_to_combine = int(bin_width_10ns / 10)
     # bin_ind = np.arange(0, tr_data.shape[-1] // bins_to_combine * bins_to_combine, bins_to_combine)
@@ -358,18 +374,23 @@ def rebin_single_track_spec_data(tr_data, return_data, bin_width_10ns):
     # return_data = new_tr_data[:, :, bin_ind]
 
     elapsed = dt.now() - start_t
-    # logging.debug('done with rebinning of track with %s elements or %.1f MB after %.1f ms:'
-    #               % (total_elements, total_elements * 32 / 8 * 10 ** -6, elapsed.total_seconds() * 1000))
+    logging.timing('done with rebinning of track with %s elements or %.1f MB after %.1f ms:'
+                   % (total_elements, total_elements * 32 / 8 * 10 ** -6, elapsed.total_seconds() * 1000))
     return tr_data
 
 
-def time_axis_rebin(tr_ind, original_t_axis_10ns_res, softw_bin_width):
+def time_axis_rebin(tr_ind, original_t_axis_10ns_res, softw_bin_width, resolution_xml_ns=10):
     """
     this will reduce the time resolution of the original time axis of the given track index
+    :param tr_ind: int: index of the track
+    :param original_t_axis_10ns_res: np.arr: time axis for all tracks before rebinning, resolution is 10ns.
+    :param softw_bin_width: int: software bin width for this track
+    :param resolution_xml_ns: int: optional, can be passed when the resolution of the xml is deliberately reduced
+    :return: np.arr: new time axis for this track
     """
-    delay_ns = original_t_axis_10ns_res[tr_ind][0]
-    bins_before = original_t_axis_10ns_res[tr_ind].size
-    bins = bins_before // (softw_bin_width / 10)
+    delay_ns = original_t_axis_10ns_res[tr_ind][0]  # get first time bin of axis (=delay)
+    bins_before = original_t_axis_10ns_res[tr_ind].size  # get length of time axis (# 10ns bins)
+    bins = bins_before // (softw_bin_width / resolution_xml_ns)
     in_mu_s = isinstance(delay_ns, float)
     div_by = 1000 if in_mu_s else 1
     delay_ns = delay_ns * div_by  # only then it really is in ns

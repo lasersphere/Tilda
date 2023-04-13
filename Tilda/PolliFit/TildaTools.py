@@ -490,6 +490,16 @@ def scan_dict_from_xml_file(xml_file_name, scan_dict=None):
     return scan_dict, xml_etree
 
 
+def check_software_gate_validity(val_to_set, xml_resolution):
+    # Make sure the user cannot rebin below the xml_resolution or in non-integer multiples of the xml_res
+    if val_to_set % xml_resolution:
+        # current rebinning value is not good, change to nearest match
+        val_before = val_to_set
+        val_to_set = max(val_to_set//xml_resolution*xml_resolution, xml_resolution)
+        logging.debug('changed rebinning value from {} to {}'.format(val_before, val_to_set))
+    return val_to_set
+
+
 def gate_one_track(tr_ind, tr_num, scan_dict, data, time_array, volt_array, ret):
     """
     Function to gate all data of one track by applying the software gates given
@@ -558,6 +568,7 @@ def gate_specdata(spec_data, full_x_range=True):
     :return: spec_data
     """
     # logging.debug('gating data now, software gates are: %s' % spec_data.softw_gates)
+    logging.timing('starting gate_specdata')
     # check if enough gates are given for this track
     for tr_ind, gates_tr in enumerate(spec_data.softw_gates):
         tr_scalers = spec_data.nrScalers[tr_ind]
@@ -570,24 +581,30 @@ def gate_specdata(spec_data, full_x_range=True):
             for sc_ind in range(spec_data.nrScalers[tr_ind]):
                 spec_data.softw_gates[tr_ind][sc_ind][0] = min(spec_data.x[tr_ind][0], spec_data.x[tr_ind][-1])
                 spec_data.softw_gates[tr_ind][sc_ind][1] = max(spec_data.x[tr_ind][0], spec_data.x[tr_ind][-1])
+    logging.timing('done checking stuff')
     # get indices of the values first
     compare_arr = [spec_data.x, spec_data.x, spec_data.t, spec_data.t]
     softw_gates_ind = [
         [[find_closest_value_in_arr(compare_arr[lim_ind][tr_ind], lim)[0] for lim_ind, lim in enumerate(gates_pmt)]
          for gates_pmt in gates_tr]
         for tr_ind, gates_tr in enumerate(spec_data.softw_gates)]
+    logging.timing('done making softw_gates_ind')  # TODO: Timing ~2.5sec
     spec_data.softw_gates = [
         [[compare_arr[lim_ind][tr_ind][found_ind] for lim_ind, found_ind in enumerate(gate_ind_pmt)]
          for gate_ind_pmt in gate_ind_tr]
         for tr_ind, gate_ind_tr in enumerate(softw_gates_ind)]
+    logging.timing('done making spec-data.softw_gates')
     for tr_ind, tr in enumerate(spec_data.cts):
         for pmt_ind, pmt in enumerate(tr):
+            # TODO: TIMING: Individually each of these loops took about ~1s --> for 6 pmt this adds up
             v_min_ind = min(softw_gates_ind[tr_ind][pmt_ind][0], softw_gates_ind[tr_ind][pmt_ind][1])
             v_max_ind = max(softw_gates_ind[tr_ind][pmt_ind][0], softw_gates_ind[tr_ind][pmt_ind][1]) + 1
             t_min_ind = min(softw_gates_ind[tr_ind][pmt_ind][2], softw_gates_ind[tr_ind][pmt_ind][3])
             t_max_ind = max(softw_gates_ind[tr_ind][pmt_ind][2], softw_gates_ind[tr_ind][pmt_ind][3]) + 1
             t_proj_res = np.sum(spec_data.time_res[tr_ind][pmt_ind][v_min_ind:v_max_ind, :], axis=0)
+            logging.timing('done summing t_proj')
             v_proj_res = np.sum(spec_data.time_res[tr_ind][pmt_ind][:, t_min_ind:t_max_ind], axis=1)
+            logging.timing('done summing v_proj')
             spec_data.t_proj[tr_ind][pmt_ind] = t_proj_res
             spec_data.cts[tr_ind][pmt_ind] = v_proj_res
             if spec_data.time_res_err:
@@ -599,6 +616,8 @@ def gate_specdata(spec_data, full_x_range=True):
                 spec_error = deepcopy(v_proj_res)  # Errors have to be regated as well
                 spec_error[spec_error < 1] = 1
                 spec_data.err[tr_ind][pmt_ind] = np.sqrt(spec_error)
+            logging.timing('done gating errors')
+    logging.timing('finished gate_specdata')
     return spec_data
 
 
@@ -612,6 +631,7 @@ def zero_free_to_non_zero_free(zf_time_res_arr, dims_sc_step_time_list):
                 [(n_of_scalers_tr, n_of_steps_tr, n_of_bins_tr), ...]
 
     """
+    # TODO: can tun into big Matrix issues here. Check maxsize and split into multiple?
     new_time_res = [np.zeros(dims_sc_step_time_list[tr_ind], dtype=np.int32)
                     for tr_ind, tr in enumerate(dims_sc_step_time_list)]
 
@@ -754,7 +774,7 @@ def create_x_axis_from_file_dict(scan_dict, as_voltage=True):
 
 def create_t_axis_from_file_dict(scan_dict, with_delay=True, bin_width=10, in_mu_s=True):
     """
-    will create a time axis for all tracks, resolution is 10ns.
+    will create a time axis for all tracks, resolution is 10ns if not specified otherwise.
     """
     t_arr = []
     for tr_ind, tr_name in enumerate(get_track_names(scan_dict)):
@@ -765,7 +785,8 @@ def create_t_axis_from_file_dict(scan_dict, with_delay=True, bin_width=10, in_mu
                 delay = scan_dict[tr_name]['trigger'].get('meas_trigger', {}).get('trigDelay10ns', 0) * bin_width
         else:
             delay = 0
-        nofbins = scan_dict[tr_name]['nOfBins']
+        nofbins = scan_dict[tr_name]['nOfBins']  # original raw file bins (10ns)
+        nofbins = nofbins // (bin_width/10)  # xml file bin width
         div_by = 1000 if in_mu_s else 1
         t_tr = np.arange(delay, nofbins * bin_width + delay, bin_width) / div_by
         t_arr.append(t_tr)
