@@ -66,4 +66,3 @@ Pollifit provides an interface for various analysis-operations including
 radii.
 
 The Pollifit code is also an excellent basis for advanced analysis scripts that go beyond the possibilities of the GUI.
->>>>>>> gitlab/TildaAsPackage
