@@ -94,6 +94,7 @@ class Main(QtCore.QObject):
         self.laserfreq = 0  # laser frequency in cm-1; first set in load_options
         self.acc_voltage = 0  # acceleration voltage of the source in volts
         self.simple_counter_inst = None
+        self.cnt_pars = {}
         self.cmd_queue = None
         self.jobs_to_do_when_idle_queue = []
         self.autostart_dict = {}  # dict containing all infos from the autostart.xml file keys are: workingDir,
@@ -936,6 +937,10 @@ class Main(QtCore.QObject):
 
     """ simple counter """
 
+    def add_seqType_to_cnt_pars(self, seq_type):
+        self.cnt_pars['cntData'] = seq_type
+        logging.debug('cnt_pars are:' +  str(self.cnt_pars))
+
     def start_simple_counter(self, act_pmt_list, datapoints, callback_sig, sample_interval):
         self.set_state(MainState.starting_simple_counter,
                        (act_pmt_list, datapoints, callback_sig, sample_interval), only_if_idle=True)
@@ -943,15 +948,19 @@ class Main(QtCore.QObject):
     def _start_simple_counter(self, act_pmt_list, datapoints, callback_sig, sample_interval):
         if self.scan_main.sequencer is not None:
             self.scan_main.deinit_fpga()
+        ''' create Simple Counter instance'''
         self.simple_counter_inst = SimpleCounterControl(act_pmt_list, datapoints, callback_sig, sample_interval)
-        ret = self.simple_counter_inst.run()
-        if ret:
-            pass
+        start_ok = False
+        if self.simple_counter_inst.prepare_cnt():  # find and prepare FPGA
+            start_ok = self.simple_counter_inst.run(self.cnt_pars)   # send trigger pars to FPGA and start simple coutner
         else:
-            logging.warning('while starting the simple counter bitfile, something did not work.'
-                            ' Don\'t worry, starting DUMMY Simple Counter now.')
             self.simple_counter_inst.run_dummy()
-        self.set_state(MainState.simple_counter_running)
+            start_ok = True
+        if start_ok:
+            self.set_state(MainState.simple_counter_running)
+        else:
+            logging.error('Could not start simple counter')
+            self.set_state(MainState.error)
 
     def _read_data_simple_counter(self):
         self.simple_counter_inst.read_data()

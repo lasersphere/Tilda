@@ -7,21 +7,27 @@ Module Description: Driver Interface for the Simple Counter bitfile,
  which should read all 8 PMTs with a dwelltime of 200 ms and
  should send all countervalues to the host via DMAQueue
 """
+import logging
 
 from Tilda.Driver.DataAcquisitionFpga.FPGAInterfaceHandling import FPGAInterfaceHandling
 import Tilda.Driver.DataAcquisitionFpga.SimpleCounterConfig as ScCfg
 import Tilda.Service.VoltageConversions.VoltageConversions as VCon
+from Tilda.Driver.DataAcquisitionFpga.SequencerCommon import Sequencer
+from Tilda.Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes as TiTs
+
 
 import time
 
 
-class SimpleCounter(FPGAInterfaceHandling):
+class SimpleCounter(Sequencer):
     def __init__(self):
         self.type = 'sc'
-        bit_path = ScCfg.bitfilePath
-        bit_sig = ScCfg.bitfileSignature
-        res = ScCfg.fpgaResource
-        super(SimpleCounter, self).__init__(bit_path, bit_sig, res)
+        self.config = ScCfg
+        bit_path = self.config.bitfilePath
+        bit_sig = self.config.bitfileSignature
+        res = self.config.fpgaResource
+        super(Sequencer, self).__init__(bit_path, bit_sig, res)
+        #super(SimpleCounter, self).__init__(bit_path, bit_sig, res)
         self.conf_host_buf(ScCfg.transferToHostReqEle)
 
     def conf_host_buf(self, num_of_request_ele):
@@ -67,3 +73,75 @@ class SimpleCounter(FPGAInterfaceHandling):
             if val == post_acc_state:
                 post_acc_name = key
         return post_acc_state, post_acc_name
+
+    def set_all_simpCnt_parameters(self, cntpars):
+        """
+        all parameters needed for the simple counting are set here
+        """
+        self.set_dwell_time(cntpars.get('timing', {}).get('nOfBins', None))
+        self.set_trigger(cntpars.get('timing', {}).get('trigger', {}))
+        return self.checkFpgaStatus()
+
+    ''' performe measurement '''
+    def measure(self, cnt_pars):
+        """
+        set all counting parameters on the FPGA and go into counting state.
+        FPGA will then measure counts independently from host until host says stop
+        In parallel, host has to read the data from the host sided buffer in parallel.
+        :param cnt_pars: dict: trigger parameters
+        :return: bool: True if successfully changed State
+        """
+        if self.set_all_simpCnt_parameters(cnt_pars):
+            if self.set_start():
+                return True
+            else:
+                logging.DEBUG('trigger values for simple counter could not be set')
+        else:
+            logging.DEBUG('Start signal could not be sent to fpga')
+
+    def set_dwell_time(self, dtime=None):
+        self.ReadWrite(self.config.dwellTime10ns, dtime)
+        return self.checkFpgaStatus()
+
+    def set_trigger(self, trigger_dict=None):
+        """
+        sets all parameters related to the trigger.
+        :param trigger_type: enum, defined in TriggerTypes.py
+        :param trigger_dict: dict, containing all values needed for this type of trigger
+        :return: True if success
+        """
+        meas_trigger_controls = {'triggerTypes': self.config.triggerTypes,
+                              'selectTrigger': self.config.selectTrigger,
+                              'trigDelay10ns': self.config.trigDelay10ns,
+                              'triggerEdge': self.config.triggerEdge,
+                              'softwareTrigger': self.config.softwareTrigger}
+
+        trig_fpga_status = True
+        for triggers, trig_dicts in trigger_dict.items():
+            controls = {}
+            if triggers == 'meas_trigger': controls = meas_trigger_controls
+            #elif triggers == 'step_trigger': controls = step_trigger_controls
+            #elif triggers == 'scan_trigger': controls = scan_trigger_controls
+
+            trigger_type = trig_dicts.get('type', TiTs.no_trigger)
+            logging.debug('setting trigger type to: ' + str(trigger_type) + ' value: ' + str(trigger_type.value))
+            logging.debug('trigger dict is: ' + str(trig_dicts))
+            self.ReadWrite(controls['triggerTypes'], trigger_type.value)
+            if trigger_type is TiTs.no_trigger:
+                trig_fpga_status = trig_fpga_status and self.checkFpgaStatus()
+            elif trigger_type is TiTs.single_hit_delay:
+                self.ReadWrite(controls['selectTrigger'], trig_dicts.get('trigInputChan', 0))
+                self.ReadWrite(controls['trigDelay10ns'], int(trig_dicts.get('trigDelay10ns', 0)))
+                trig_num = ['either', 'rising', 'falling'].index(trig_dicts.get('trigEdge', 'rising'))
+                logging.debug('triggernum is: %s' % trig_num)
+                self.ReadWrite(controls['triggerEdge'], trig_num)
+                trig_fpga_status = trig_fpga_status and self.checkFpgaStatus()
+        return trig_fpga_status
+
+    def set_start(self):
+        """
+        sends start signal to the FPGA to start the SimpleCounter measurement
+        :return: True if self.status == self.statusSuccess, else False
+        """
+        self.ReadWrite(self.config.StartSignal, True)
+        return self.checkFpgaStatus()

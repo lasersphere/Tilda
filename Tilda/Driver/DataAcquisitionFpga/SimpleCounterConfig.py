@@ -18,28 +18,35 @@ fpga_resource = data_acq_cfg['fpga_resource']
 
 '''Bitfile Signature:'''
 bitfileSignatures = {
-    'PXI-7852R': 'C2BD7B62D4E20875CAA99C070B9A034C',
+    'PXI-7852R': '7EB244FCD5A1C780261ED48E2A1E370C',
     'PXI-7841R': 'E87F746B4D75FAC83D98D9825FB513AE'
                      }
 bitfileSignature = bitfileSignatures[fpga_type]
 '''Bitfile Path:'''
 bitfilePaths = {
     'PXI-7852R': path.join(path.dirname(__file__), pardir, pardir,
-                           'TildaTarget/bin/SimpleCounter/NiFpga_SimpleCounter_7852.lvbitx'),
+                           'TildaTarget/bin/SimpleCounter/NiFpga_SimpleCounterV254.lvbitx'),
     'PXI-7841R': path.join(path.dirname(__file__), pardir, pardir,
-                           'TildaTarget/bin/SimpleCounter/NiFpga_SimpleCounter_7841.lvbitx')
+                           'TildaTarget/bin/SimpleCounter/NiFpga_SimpleCounter_7841_v200.lvbitx')
                 }
 bitfilePath = bitfilePaths[fpga_type]
 '''FPGA Resource:'''
 fpgaResource = fpga_resource
 '''Indicators:'''
-postAccOffsetVoltState = {'ref': 0x8122, 'val': ctypes.c_ubyte(), 'ctr': False}
-DacState = {'ref': 0x8112, 'val': ctypes.c_uint(), 'ctr': False}
-actDACRegister = {'ref': 0x8114, 'val': ctypes.c_ulong(), 'ctr': False}
+postAccOffsetVoltState = {'ref': 0x813E, 'val': ctypes.c_ubyte(), 'ctr': False}
+DacState = {'ref': 0x812A, 'val': ctypes.c_uint(), 'ctr': False}
+actDACRegister = {'ref': 0x812C, 'val': ctypes.c_ulong(), 'ctr': False}
 '''Controls:'''
-postAccOffsetVoltControl = {'ref': 0x811E, 'val': ctypes.c_ubyte(), 'ctr': True}
-DacStateCmdByHost = {'ref': 0x811A, 'val': ctypes.c_uint(), 'ctr': True}
-setDACRegister = {'ref': 0x810C, 'val': ctypes.c_ulong(), 'ctr': True}
+StartSignal = {'ref': 0x8112, 'val': ctypes.c_bool(), 'ctr': True}
+softwareTrigger = {'ref': 0x811A, 'val': ctypes.c_bool(), 'ctr': True}
+postAccOffsetVoltControl = {'ref': 0x813A, 'val': ctypes.c_ubyte(), 'ctr': True}
+selectTrigger = {'ref': 0x8126, 'val': ctypes.c_ubyte(), 'ctr': True}
+triggerEdge = {'ref': 0x811E, 'val': ctypes.c_ubyte(), 'ctr': True}
+DacStateCmdByHost = {'ref': 0x8136, 'val': ctypes.c_uint(), 'ctr': True}
+triggerTypes = {'ref': 0x810E, 'val': ctypes.c_uint(), 'ctr': True}
+dwellTime10ns = {'ref': 0x8114, 'val': ctypes.c_ulong(), 'ctr': True}
+setDACRegister = {'ref': 0x8130, 'val': ctypes.c_ulong(), 'ctr': True}
+trigDelay10ns = {'ref': 0x8120, 'val': ctypes.c_ulong(), 'ctr': True}
 '''TargetToHostFifos:'''
 transferToHost = {'ref': 0, 'val': ctypes.c_ulong(), 'ctr': False}
 
@@ -49,3 +56,5 @@ transferToHostReqEle = 50000
 
 dacState = {'init': 0, 'idle': 1, 'setVolt': 2, 'error': 3}
 postAccOffsetVoltStateDict = {'Kepco': 0, 'Heinzinger1': 1, 'Heinzinger2': 2, 'Heinzinger3': 3, 'loading': 4}
+
+seq_type = 'smplCnt'
