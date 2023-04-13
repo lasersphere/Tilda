@@ -251,10 +251,8 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
                 iso str: isotope name. Must be given if open_setup_win is False
                 seq str: sequencer type. Must be given if open_setup_win is False
         """
-        if self.active_iso:  # first remove the before selected isotope from the scan pars
+        if self.active_iso:
             self.enable_config_actions(False)
-            Cfg._main_instance.remove_iso_from_scan_pars(self.active_iso)
-            self.active_iso = None
         logging.debug('setting up isotope')
         if not dont_open_setup_win:
             SetupIsotopeUi(self)
