@@ -11,7 +11,7 @@ experiments. The code is written and maintained by members of the LaserSpHERe gr
 3. [Pollifit](#pollifit)
 
 ## License
-TILDA is licensed under the MIT License.
+TILDA is licensed under the [EUPL-1.2](https://joinup.ec.europa.eu/collection/eupl/eupl-guidelines-faq-infographics).
 
 ## Requirements
 TILDA and Pollifit are distributed via GIT.
