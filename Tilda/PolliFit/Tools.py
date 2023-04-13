@@ -14,8 +14,10 @@ import sqlite3
 import sys
 import traceback
 import numpy as np
+import requests
 import matplotlib.pyplot as plt
 
+import Tilda.Application.Config as Cfg
 import Tilda.PolliFit.MPLPlotter as Plot
 import Tilda.PolliFit.Measurement.MeasLoad as Meas
 from Tilda.PolliFit import Physics
@@ -642,13 +644,18 @@ def create_header_list(meas, sc, tr):
     return header
 
 
-def import_masses(db, element, a=None):
+def import_masses(db, element, a=None, force_download=False):
+    filename = os.path.join(Cfg.config_dir, 'PolliFit', 'masses.txt')
+    if force_download or not os.path.isfile(filename):
+        r = requests.get('https://www-nds.iaea.org/amdc/ame2020/mass_1.mas20.txt')
+        with open(filename, 'w') as file:
+            file.write(r.text)
+
     elements = []
     mass_numbers = []
     masses = []
     masses_d = []
-
-    with open('masses.txt', 'r') as file:
+    with open(filename, 'r') as file:
         for i in range(36):
             file.readline()
         for line in file:
@@ -733,30 +740,5 @@ def merge_intervals(intervals):
 
 
 if __name__ == '__main__':
-    # workdir = 'R:\\Projekte\\COLLAPS\\Nickel\\Measurement_and_Analysis_Simon\\Ni_workspace'
-    # db_0 = os.path.join(workdir, 'Ni_workspace.sqlite')
-    # save_to = os.path.join(workdir, 'Ascii_files', 'test.txt')
-    # # files = ['Ni_April2016_mcp\\58Ni_no_protonTrigger_Run210.mcp',
-    # #          'Ni_April2016_mcp\\59Ni_no_protonTrigger_Run113.mcp',
-    # #          'Ni_April2016_mcp\\60Ni_no_protonTrigger_Run096.mcp',
-    # #          'Ni_April2016_mcp\\61Ni_no_protonTrigger_Run159.mcp',
-    # #          'Ni_April2016_mcp\\62Ni_no_protonTrigger_Run145.mcp',
-    # #          'Ni_April2016_mcp\\63Ni_no_protonTrigger_Run169.mcp',
-    # #          'Ni_April2016_mcp\\64Ni_no_protonTrigger_Run174.mcp',
-    # #          'Ni_April2016_mcp\\65Ni_no_protonTrigger_Run181.mcp',
-    # #          'Ni_April2016_mcp\\66Ni_no_protonTrigger_Run102.mcp',
-    # #          'Ni_April2016_mcp\\67Ni_no_protonTrigger_3Tracks_Run191.mcp',
-    # #          'Ni_April2016_mcp\\68Ni_no_protonTrigger_Run135.mcp',
-    # #          'Ni_April2016_mcp\\70Ni_protonTrigger_Run248_sum_252_254_259_265.xml'
-    # #          ]
-    # files = ['Ni_April2016_mcp\\58Ni_no_protonTrigger_Run210.mcp',
-    #          'Ni_April2016_mcp\\70Ni_protonTrigger_Run248_sum_252_254_259_265.xml',
-    #          'Ni_April2016_mcp\\67Ni_no_protonTrigger_3Tracks_Run191.mcp'
-    #          ]
-    # for file in files:
-    #     extract_file_as_ascii(db, file, [4, 5, 6, 7],
-    #                           -1, line_var='tisa_60_asym_wide', x_in_freq=False)
-    # add_missing_columns(db_0)
-
-    import_masses(r'D:\Users\Patrick\Dokumente\Auswertungen\Te\Te - Kopie.sqlite', 'Te')
-    # copy_scan_pars_for_all_isotopes(r'D:\Users\Patrick\Dokumente\Auswertungen\Te\Te - Kopie.sqlite', '130Te')
+    import_masses(r'C:\Users\User\Desktop\H\H.sqlite', 'H', force_download=False)
+    copy_scan_pars_for_all_isotopes(r'C:\Users\User\Desktop\H.sqlite', '1H')
