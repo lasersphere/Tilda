@@ -278,6 +278,10 @@ def create_error_item():
     return pg.ErrorBarItem(x=[], y=[])
 
 
+def create_fill_between_item(curve1, curve2, brush='b', pen=None):
+    return pg.FillBetweenItem(curve1, curve2, brush=brush, pen=pen)
+
+
 def image(data):
     return pg.image(data)
 
@@ -332,6 +336,10 @@ def create_roi_polyline(positions, closed=False, pos=None, **args):
 
 def create_pen(*args, **kargs):
     return pg.mkPen(*args, **kargs)
+
+
+def create_brush(*args, **kargs):
+    return pg.mkBrush(*args, **kargs)
 
 
 class MyPolyLineRoi(pg.PolyLineROI):

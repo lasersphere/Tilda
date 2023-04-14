@@ -82,6 +82,14 @@ def print_cov(cov, normalize=False, decimals=2):
                             '{:1.2f}'.format(val).rjust(decimals + 3), COLORS.ENDC) for val in row)))
 
 
+def clip_val_with_unc(val, unc):
+    if np.isnan(val) or np.isnan(unc) or np.isinf(np.abs(val)) or np.isinf(np.abs(unc)) or unc == 0:
+        return val, unc
+    unc_digits = int(np.floor(np.log10(np.abs(unc)))) - 1
+    decimals = 0 if unc_digits > 0 else -unc_digits
+    return np.around(val, decimals=decimals), np.around(unc, decimals=decimals)
+
+
 def isoPlot(db, iso_name, isovar='', linevar='', as_freq=True, laserfreq=None, col=None, saving=False, show=True,
             isom_name=None, prec=10000, clear=False, x_transform=None, x_label=None, norm=False):
     """ Plot isotope iso """

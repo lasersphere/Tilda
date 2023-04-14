@@ -22,13 +22,15 @@ from PyQt5 import QtWidgets, QtCore, QtGui
 import pyqtgraph as pg
 
 import Tilda.Application.Config as Cfg
-from Tilda.PolliFit import PyQtGraphPlotter as Pg, TildaTools as TiTs
 from Tilda.Interface.LiveDataPlottingUi.PreDurPostMeasUi import PrePostTabWidget
 from Tilda.Interface.LiveDataPlottingUi.Ui_LiveDataPlotting import Ui_MainWindow_LiveDataPlotting
 from Tilda.Interface.ScanProgressUi.ScanProgressUi import ScanProgressUi
+from Tilda.PolliFit import PyQtGraphPlotter as Pg
+from Tilda.PolliFit import Tools as Ts
+from Tilda.PolliFit import TildaTools as TiTs
 from Tilda.PolliFit.Measurement.XMLImporter import XMLImporter
 from Tilda.PolliFit.Models.Base import NPeak, Offset
-from Tilda.PolliFit.Models.Spectrum import Voigt
+from Tilda.PolliFit.Models.Spectrum import Voigt, Lorentz, Gauss
 
 
 class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting):
@@ -184,14 +186,19 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         ''' fit related '''
 
         self.action_fit.triggered.connect(self.fit_spectrum)
-        self.fit_config = {'model': Offset(NPeak(Voigt()))}
+        self.fit_config = {'model': Offset(NPeak(Voigt())), 'min': -np.inf, 'max': np.inf}
 
         self.action_fit_cursor.triggered.connect(self.toggle_fit_cursor)
         self.sum_wid.scene().sigMouseClicked.connect(self.set_cursor)
         self.cursor_xy_set = False
         self.cursor_xy = (0., 0.)
+        self.cursor_data = None
 
-        self.action_fit_auto.triggered.connect(self.toggle_fit_auto)
+        self.action_set_limits.triggered.connect(self.toggle_set_limits)
+        self.sum_wid.scene().sigMouseClicked.connect(self.set_limits)
+
+        self.action_fit_cursor.triggered.connect(self.toggle_fit_cursor)
+        self.min_set = False
 
         for a in self.menu_track.actions():
             a.triggered.connect(self.toggle_tracks)
@@ -199,9 +206,12 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         QtWidgets.QShortcut(QtGui.QKeySequence('Ctrl+Shift+T'), self, functools.partial(self.next_track, False))
         self.menu_track.setTitle(self.menu_track.title() + '\tCtrl+T  ')
 
+        for a in self.menu_lineshape.actions():
+            a.triggered.connect(self.toggle_lineshape)
+        self.actionscans.triggered.connect(self.toggle_norm_menu)
         QtWidgets.QShortcut(QtGui.QKeySequence('Ctrl+L'), self, functools.partial(self.next_lineshape, True))
         QtWidgets.QShortcut(QtGui.QKeySequence('Ctrl+Shift+L'), self, functools.partial(self.next_lineshape, False))
-        self.menu_lineshape.setTitle(self.menunorm.title() + '\tCtrl+L  ')
+        self.menu_lineshape.setTitle(self.menu_lineshape.title() + '\tCtrl+L  ')
 
         self.action_fit_config.triggered.connect(self.open_fit_config)
 
@@ -362,11 +372,19 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             [], [], Pg.create_pen('b', width=2), stepMode=False)
         self.fit_cursor_item = Pg.create_plot_data_item(
             [], [], Pg.create_pen('r', width=2), stepMode=False)
+        self.fit_min_item = Pg.create_plot_data_item(
+            [], [], Pg.create_pen('r', width=2, style=QtCore.Qt.PenStyle.DashLine), stepMode=False)
+        self.fit_max_item = Pg.create_plot_data_item(
+            [], [], Pg.create_pen('r', width=2, style=QtCore.Qt.PenStyle.DashLine), stepMode=False)
+        self.fit_fill_item = Pg.create_fill_between_item(
+            self.fit_min_item, self.fit_max_item, Pg.create_brush(255, 0, 0, 63))
         if not self.actionshow_bins.isChecked():  # Add errorbar plot if self.actionshow_bins is already unchecked.
             self.stepMode = False
             self.sum_plt_itm.addItem(self.err_sum_plt_item)
         self.sum_plt_itm.addItem(self.fit_data_item)
         self.sum_plt_itm.addItem(self.fit_cursor_item)
+        self.sum_plt_itm.addItem(self.fit_min_item)
+        self.sum_plt_itm.addItem(self.fit_max_item)
         self.sum_plot_layout = QtWidgets.QVBoxLayout()
         self.sum_plot_layout.addWidget(self.sum_wid)
         self.widget_inner_sum_plot.setLayout(self.sum_plot_layout)
@@ -776,6 +794,12 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         :return:
         """
         if self.sum_scaler is not None:
+            # self.menu_track.blockSignals(True)
+            # tr_list = deepcopy(spec_data.track_names)
+            # tr_list.append('all')
+            # tr_list = [QtWidgets.QAction(t) for t in tr_list]
+            # self.menu_track.addAction(tr_list)
+            # self.menu_track.blockSignals(False)
             self.sum_x, self.sum_y, self.sum_err = spec_data.getArithSpec(
                 self.sum_scaler, self.sum_track, self.function)
             if self.sum_plt_data is None:
@@ -1465,29 +1489,57 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         model = self.fit_config['model']
         fixed, bounds = model.fit_prepare()
         fixed = [False for _ in fixed]
+        mask = self.sum_x < self.fit_config['min']
+        mask += self.sum_x > self.fit_config['max']
+        mask = ~mask
         try:
-            popt, pcov = curve_fit(model, self.sum_x, self.sum_y, p0=model.vals, p0_fixed=fixed, sigma=self.sum_err,
-                                   bounds=bounds, report=False, maxfev=1000)
+            popt, pcov = curve_fit(
+                model, self.sum_x[mask], self.sum_y[mask], p0=model.vals, p0_fixed=fixed, sigma=self.sum_err[mask],
+                bounds=bounds, report=False, maxfev=1000)
         except (ValueError, RuntimeError):
             popt, pcov = np.array(model.vals, dtype=float), np.zeros((model.size, model.size), dtype=float)
 
-        model.set_vals(popt)
         self.display_fit(model, popt, pcov)
 
     def display_fit(self, model, popt, pcov):
-        x = np.arange(self.sum_x[0], self.sum_x[-1], model.dx)
+        x = np.arange(np.max([self.sum_x[0], self.fit_config['min']]),
+                      np.min([self.sum_x[-1], self.fit_config['max']]), model.dx)
         self.fit_data_item.setData(x, model(x, *popt))
+        digits = int(np.floor(np.log10(np.abs(model.size)))) + 1
+        text = 'Fit results:\n{}'.format(
+            '\n'.join(['{}:   {} = {} +/- {}'.format(str(i).zfill(digits), name, *Ts.clip_val_with_unc(val, err))
+                       for i, (name, val, err) in enumerate(zip(model.names, popt, np.sqrt(np.diag(pcov))))]))
+        self.browser_fitresults.setText(text)
 
     def toggle_fit_cursor(self):
         if self.action_fit_cursor.isChecked():
+            if self.action_set_limits.isChecked():
+                self.action_set_limits.blockSignals(True)
+                self.action_set_limits.trigger()
+                self.action_set_limits.blockSignals(False)
             cur = QtGui.QCursor(QtCore.Qt.CursorShape.CrossCursor)
+            self.fit_cursor_item.setOpacity(1)
+            self.fit_min_item.setOpacity(1)
+            self.fit_max_item.setOpacity(1)
+            self.fit_fill_item.setOpacity(1)
         else:
             cur = QtGui.QCursor(QtCore.Qt.CursorShape.ArrowCursor)
-        self.setCursor(cur)
-        if self.action_fit_cursor.isChecked():
-            self.fit_cursor_item.setOpacity(1)
-        else:
             self.fit_cursor_item.setOpacity(0)
+            self.fit_min_item.setOpacity(0)
+            self.fit_max_item.setOpacity(0)
+            self.fit_fill_item.setOpacity(0)
+        self.setCursor(cur)
+
+    def update_cursor_data(self):
+        if not self.cursor_xy_set:
+            return
+        model = self.fit_config['model']
+        x = np.arange(np.max([self.sum_x[0], self.fit_config['min']]),
+                      np.min([self.sum_x[-1], self.fit_config['max']]), model.dx)
+        if x.size == 0:
+            return
+        self.cursor_data = (x, model(x, *model.vals))
+        self.fit_cursor_item.setData(*self.cursor_data)
 
     def set_cursor_xy(self, x, y):
         # x_lims, y_lims = self.sum_plt_itm.vb.state['viewRange']
@@ -1500,7 +1552,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         model.gen_offset_masks(self.sum_x)
         model.guess_offset(self.sum_x, self.sum_y)
         model.set_val(model.p['p0'], np.max(self.sum_y) - model.vals[model.p['off0e0']])
-        dx = 0.2 * (np.max(self.sum_x) - np.min(self.sum_x))
+        dx = 0.2 * (np.max([self.sum_x[0], self.fit_config['min']]) - np.min([self.sum_x[-1], self.fit_config['max']]))
         if spectrum.type in {'Lorentz', 'Voigt'}:
             model.set_val(model.p['Gamma'], dx)
         if spectrum.type in {'Gauss', 'Voigt'}:
@@ -1509,17 +1561,52 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 fwhm = spectrum.fwhm()
                 model.set_val(model.p['Gamma'], model.vals[model.p['Gamma']] * dx / fwhm)
                 model.set_val(model.p['sigma'], model.vals[model.p['sigma']] * dx / fwhm)
-
-        x = np.arange(self.sum_x[0], self.sum_x[-1], model.dx)
-        self.cursor_data = (x, model(x, *model.vals))
-        if self.action_fit_cursor.isChecked():
-            self.fit_cursor_item.setData(*self.cursor_data)
+        self.update_cursor_data()
 
     def set_cursor(self, event):
         if not self.action_fit_cursor.isChecked():
             return
         mouse_point = self.sum_plt_itm.vb.mapSceneToView(event._scenePos)
         self.set_cursor_xy(mouse_point.x(), mouse_point.y())
+
+    def toggle_set_limits(self):
+        if self.action_set_limits.isChecked():
+            if self.action_fit_cursor.isChecked():
+                self.action_fit_cursor.blockSignals(True)
+                self.action_fit_cursor.trigger()
+                self.action_fit_cursor.blockSignals(False)
+            cur = QtGui.QCursor(QtCore.Qt.CursorShape.UpArrowCursor)
+            self.min_set = False
+            self.fit_cursor_item.setOpacity(1)
+            self.fit_min_item.setOpacity(1)
+            self.fit_max_item.setOpacity(1)
+            self.fit_fill_item.setOpacity(1)
+        else:
+            cur = QtGui.QCursor(QtCore.Qt.CursorShape.ArrowCursor)
+            self.fit_cursor_item.setOpacity(0)
+            self.fit_min_item.setOpacity(0)
+            self.fit_max_item.setOpacity(0)
+            self.fit_fill_item.setOpacity(0)
+        self.setCursor(cur)
+
+    def set_limits(self, event):
+        if not self.action_set_limits.isChecked():
+            return
+        mouse_point = self.sum_plt_itm.vb.mapSceneToView(event._scenePos)
+        x = mouse_point.x()
+        if self.min_set:
+            x_data = np.array([x, x]) if x > self.fit_config['min'] else self.fit_min_item.xData.copy()
+            self.fit_config['max'] = x_data[0]
+            self.fit_max_item.setData(x_data, self.fit_min_item.yData.copy())
+            self.min_set = False
+            if self.fit_fill_item not in self.sum_plt_itm.items:
+                self.sum_plt_itm.addItem(self.fit_fill_item)
+        else:
+            x_data = np.array([x, x]) if x < self.fit_config['max'] else self.fit_max_item.xData.copy()
+            self.fit_config['min'] = x_data[0]
+            self.fit_min_item.setData(x_data, np.array([np.min(self.sum_y), np.max(self.sum_y)]))
+            self.min_set = True
+        self.update_cursor_data()
 
     def toggle_fit_auto(self):
         pass
@@ -1540,6 +1627,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             for a in self.menu_track.actions():
                 a.setChecked(False)
         action.toggle()
+        self.menu_track.setTitle(action.text() + '\tCtrl+T  ')
 
     def set_lineshape(self, shape):
         self.fit_config['model'] = Offset(NPeak(eval(shape)()))
@@ -1561,6 +1649,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             for a in self.menu_lineshape.actions():
                 a.setChecked(False)
         action.toggle()
+        self.menu_lineshape.setTitle(action.text() + '\tCtrl+L  ')
         self.set_lineshape(action.text())
 
     def reset_all_pmt_plots(self):

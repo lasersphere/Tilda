@@ -105,7 +105,7 @@
               <widget class="QComboBox" name="comboBox_sum_tr"/>
              </item>
              <item>
-              <widget class="QTextBrowser" name="textBrowser">
+              <widget class="QTextBrowser" name="browser_fitresults">
                <property name="html">
                 <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
@@ -532,7 +532,7 @@ p, li { white-space: pre-wrap; }
     </property>
     <widget class="QMenu" name="menu_lineshape">
      <property name="title">
-      <string>lineshape</string>
+      <string>Voigt</string>
      </property>
      <addaction name="action_lorentz"/>
      <addaction name="action_gauss"/>
@@ -540,7 +540,7 @@ p, li { white-space: pre-wrap; }
     </widget>
     <widget class="QMenu" name="menu_track">
      <property name="title">
-      <string>track</string>
+      <string>track0</string>
      </property>
      <addaction name="action_track0"/>
     </widget>
@@ -548,7 +548,7 @@ p, li { white-space: pre-wrap; }
     <addaction name="action_clear"/>
     <addaction name="action_fit_auto"/>
     <addaction name="action_fit_cursor"/>
-    <addaction name="actionset_x_limits"/>
+    <addaction name="action_set_limits"/>
     <addaction name="separator"/>
     <addaction name="menu_lineshape"/>
     <addaction name="menu_track"/>
@@ -699,11 +699,17 @@ p, li { white-space: pre-wrap; }
    </property>
   </action>
   <action name="action_lorentz">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="text">
     <string>Lorentz</string>
    </property>
   </action>
   <action name="action_gauss">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="text">
     <string>Gauss</string>
    </property>
@@ -740,9 +746,15 @@ p, li { white-space: pre-wrap; }
     <string>Ctrl+Shift+F</string>
    </property>
   </action>
-  <action name="actionset_x_limits">
+  <action name="action_set_limits">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="text">
     <string>set x-limits</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+H</string>
    </property>
   </action>
  </widget>
