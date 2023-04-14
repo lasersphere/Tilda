@@ -24,7 +24,7 @@ class FullSpec(object):
         Import the shape and initializes reasonable values 
         """
         # for example: iso.shape['name'] = 'Voigt'
-        shapemod = importlib.import_module('Spectra.' + iso.shape['name'])
+        shapemod = importlib.import_module('Tilda.PolliFit.Spectra.' + iso.shape['name'])
         shape = getattr(shapemod, iso.shape['name'])
         # leading to: Spectra.Voigt.Voigt(iso)
         self.shape = shape(iso)
