@@ -148,7 +148,7 @@ draft_trigger_pars = {'meas_trigger': {'type': getattr(TiTs, 'no_trigger')},
 draftTrackPars = {
     'nOfSteps': 100, 'nOfScans': 2,  # also relevant for scan but not specific for the type of scan dev
     'nOfCompletedSteps': 0, 'invertScan': False,  # also relevant for scan but not specific for the type of scan dev
-    'postAccOffsetVoltControl': 0, 'postAccOffsetVolt': 1000,
+    'postAccOffsetVoltControl': 0, 'postAccOffsetVolt': 0,
     'waitForKepco1us': 100,
     'waitAfterReset1us': 500,
     'activePmtList': [0, 1],

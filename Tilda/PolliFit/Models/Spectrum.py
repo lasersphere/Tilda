@@ -17,6 +17,22 @@ from Tilda.PolliFit.Models.Base import Model
 SPECTRA = ['Gauss', 'Lorentz', 'Voigt', 'VoigtDerivative', 'VoigtAsy', 'VoigtCEC', 'GaussChi2']
 
 
+def fwhm_voigt(gamma, sigma):
+    f_l = abs(gamma)
+    f_g = abs(np.sqrt(8 * np.log(2)) * sigma)
+    return 0.5346 * f_l + np.sqrt(0.2166 * f_l ** 2 + f_g ** 2)
+
+
+def fwhm_voigt_d(gamma, gamma_d, sigma, sigma_d):
+    f_l = abs(gamma)
+    f_l_d = abs(gamma_d)
+    f_g = abs(np.sqrt(8 * np.log(2)) * sigma)
+    f_g_d = abs(np.sqrt(8 * np.log(2)) * sigma_d)
+    f_g_d = f_g_d * f_g / np.sqrt(0.2166 * f_l ** 2 + f_g ** 2)
+    f_l_d = (0.5346 + 0.2166 * f_l / np.sqrt(0.2166 * f_l ** 2 + f_g ** 2)) * f_l_d
+    return np.sqrt(f_l_d ** 2 + f_g_d ** 2)
+
+
 class Spectrum(Model):
     def __init__(self):
         super().__init__(model=None)
@@ -92,9 +108,7 @@ class Voigt(Spectrum):
         return voigt_profile(x, args[1], 0.5 * args[0]) / voigt_profile(0, args[1], 0.5 * args[0])
 
     def fwhm(self):
-        f_l = abs(self.vals[self.p['Gamma']])
-        f_g = abs(np.sqrt(8 * np.log(2)) * self.vals[self.p['sigma']])
-        return 0.5346 * f_l + np.sqrt(0.2166 * f_l ** 2 + f_g ** 2)
+        return fwhm_voigt(self.vals[self.p['Gamma']], self.vals[self.p['sigma']])
 
 
 class VoigtDerivative(Spectrum):
@@ -111,9 +125,7 @@ class VoigtDerivative(Spectrum):
         return -(z * wofz(z)).real / (np.sqrt(np.pi) * args[1] ** 2) / voigt_profile(0, args[1], 0.5 * args[0]) * fwhm
 
     def fwhm(self):
-        f_l = abs(self.vals[self.p['Gamma']])
-        f_g = abs(np.sqrt(8 * np.log(2)) * self.vals[self.p['sigma']])
-        return 0.5346 * f_l + np.sqrt(0.2166 * f_l ** 2 + f_g ** 2)
+        return fwhm_voigt(self.vals[self.p['Gamma']], self.vals[self.p['sigma']])
 
 
 class VoigtAsy(Spectrum):
@@ -130,9 +142,7 @@ class VoigtAsy(Spectrum):
         return voigt_profile(x, args[1], gamma) / voigt_profile(0, args[1], 0.5 * args[0])
 
     def fwhm(self):
-        f_l = abs(self.vals[self.p['Gamma']])
-        f_g = abs(np.sqrt(8 * np.log(2)) * self.vals[self.p['sigma']])
-        return 0.5346 * f_l + np.sqrt(0.2166 * f_l ** 2 + f_g ** 2)
+        return fwhm_voigt(self.vals[self.p['Gamma']], self.vals[self.p['sigma']])
 
 
 class VoigtCEC(Spectrum):
@@ -151,9 +161,7 @@ class VoigtCEC(Spectrum):
                        for i in range(int(args[4]) + 1)], axis=0) / voigt_profile(0, args[1], 0.5 * args[0])
 
     def fwhm(self):
-        f_l = abs(self.vals[self.p['Gamma']])
-        f_g = abs(np.sqrt(8 * np.log(2)) * self.vals[self.p['sigma']])
-        return 0.5346 * f_l + np.sqrt(0.2166 * f_l ** 2 + f_g ** 2)
+        return fwhm_voigt(self.vals[self.p['Gamma']], self.vals[self.p['sigma']])
 
 
 def _gauss_chi2_taylor_fwhm(sigma, xi):

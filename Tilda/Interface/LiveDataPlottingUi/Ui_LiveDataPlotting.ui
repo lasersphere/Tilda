@@ -540,9 +540,8 @@ p, li { white-space: pre-wrap; }
     </widget>
     <widget class="QMenu" name="menu_track">
      <property name="title">
-      <string>track0</string>
+      <string>track</string>
      </property>
-     <addaction name="action_track0"/>
     </widget>
     <addaction name="action_fit"/>
     <addaction name="action_clear"/>
@@ -719,7 +718,7 @@ p, li { white-space: pre-wrap; }
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>set center</string>
+    <string>set cursor</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+G</string>

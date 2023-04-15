@@ -14,10 +14,9 @@ import functools
 import logging
 import time
 from copy import deepcopy
+import sqlite3
 from datetime import datetime, timedelta
-
 import numpy as np
-from Tilda.PolliFit.FitRoutines import curve_fit
 from PyQt5 import QtWidgets, QtCore, QtGui
 import pyqtgraph as pg
 
@@ -25,12 +24,15 @@ import Tilda.Application.Config as Cfg
 from Tilda.Interface.LiveDataPlottingUi.PreDurPostMeasUi import PrePostTabWidget
 from Tilda.Interface.LiveDataPlottingUi.Ui_LiveDataPlotting import Ui_MainWindow_LiveDataPlotting
 from Tilda.Interface.ScanProgressUi.ScanProgressUi import ScanProgressUi
+from Tilda.PolliFit.Physics import freqFromWavenumber, volt_to_rel_freq
+from Tilda.PolliFit.FitRoutines import curve_fit
+from Tilda.PolliFit.Tools import clip_val_with_unc
 from Tilda.PolliFit import PyQtGraphPlotter as Pg
-from Tilda.PolliFit import Tools as Ts
-from Tilda.PolliFit import TildaTools as TiTs
+from Tilda.PolliFit.TildaTools import create_scan_dict_from_spec_data
 from Tilda.PolliFit.Measurement.XMLImporter import XMLImporter
 from Tilda.PolliFit.Models.Base import NPeak, Offset
-from Tilda.PolliFit.Models.Spectrum import Voigt, Lorentz, Gauss
+# noinspection PyUnresolvedReferences
+from Tilda.PolliFit.Models.Spectrum import Voigt, Lorentz, Gauss, fwhm_voigt, fwhm_voigt_d
 
 
 class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting):
@@ -188,6 +190,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.action_fit.triggered.connect(self.fit_spectrum)
         self.fit_config = {'model': Offset(NPeak(Voigt())), 'min': -np.inf, 'max': np.inf}
 
+        self.action_clear.triggered.connect(self.clear_fit)
+
         self.action_fit_cursor.triggered.connect(self.toggle_fit_cursor)
         self.sum_wid.scene().sigMouseClicked.connect(self.set_cursor)
         self.cursor_xy_set = False
@@ -200,8 +204,6 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.action_fit_cursor.triggered.connect(self.toggle_fit_cursor)
         self.min_set = False
 
-        for a in self.menu_track.actions():
-            a.triggered.connect(self.toggle_tracks)
         QtWidgets.QShortcut(QtGui.QKeySequence('Ctrl+T'), self, functools.partial(self.next_track, True))
         QtWidgets.QShortcut(QtGui.QKeySequence('Ctrl+Shift+T'), self, functools.partial(self.next_track, False))
         self.menu_track.setTitle(self.menu_track.title() + '\tCtrl+T  ')
@@ -378,6 +380,11 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             [], [], Pg.create_pen('r', width=2, style=QtCore.Qt.PenStyle.DashLine), stepMode=False)
         self.fit_fill_item = Pg.create_fill_between_item(
             self.fit_min_item, self.fit_max_item, Pg.create_brush(255, 0, 0, 63))
+        self.fit_data_item.setOpacity(0)
+        self.fit_cursor_item.setOpacity(0)
+        self.fit_min_item.setOpacity(0)
+        self.fit_max_item.setOpacity(0)
+        self.fit_fill_item.setOpacity(0)
         if not self.actionshow_bins.isChecked():  # Add errorbar plot if self.actionshow_bins is already unchecked.
             self.stepMode = False
             self.sum_plt_itm.addItem(self.err_sum_plt_item)
@@ -620,6 +627,9 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         else:
             self.spec_data.norm_mode = '1'
             self.update_all_plots(self.spec_data)
+        if self.cursor_xy_set:
+            self.set_cursor_xy(*self.cursor_xy)
+        self.rescale_limits()
 
     def update_show_bins(self):
         # self.new_data_callback.blockSignal(True)
@@ -701,7 +711,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 if not self.subscribe_as_live_plot:
                     # if not subscribed as live plot create scan dict from spec data once
                     # and emit, so that pre post meas is displayed properly
-                    scan_dict = TiTs.create_scan_dict_from_spec_data(self.spec_data, self.full_file_path)
+                    scan_dict = create_scan_dict_from_spec_data(self.spec_data, self.full_file_path)
                     logging.debug('emitting %s, from %s, value is %s'
                                   % ('pre_post_meas_data_dict_callback',
                                      'Interface.LiveDataPlottingUi.LiveDataPlottingUi.TRSLivePlotWindowUi#new_data',
@@ -794,15 +804,21 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         :return:
         """
         if self.sum_scaler is not None:
-            # self.menu_track.blockSignals(True)
-            # tr_list = deepcopy(spec_data.track_names)
-            # tr_list.append('all')
-            # tr_list = [QtWidgets.QAction(t) for t in tr_list]
-            # self.menu_track.addAction(tr_list)
-            # self.menu_track.blockSignals(False)
             self.sum_x, self.sum_y, self.sum_err = spec_data.getArithSpec(
                 self.sum_scaler, self.sum_track, self.function)
             if self.sum_plt_data is None:
+                self.menu_track.blockSignals(True)
+                self.menu_track.clear()
+                tr_list = ['all tracks']
+                tr_list += deepcopy(spec_data.track_names)
+                tr_list = [QtWidgets.QAction(t, parent=self) for t in tr_list]
+                for t in tr_list:
+                    t.setCheckable(True)
+                    t.triggered.connect(self.toggle_tracks)
+                    self.menu_track.addAction(t)
+                tr_list[0].setChecked(True)
+                self.menu_track.setTitle(tr_list[0].text() + '\tCtrl+T  ')
+                self.menu_track.blockSignals(False)
                 self.sum_plt_data = Pg.plot_std(self.sum_x, self.sum_y, self.sum_err, self.sum_plt_itm,
                                                 self.err_sum_plt_item, stepMode=self.stepMode)
                 # self.sum_plt_data = self.sum_plt_itm.plot(
@@ -1480,18 +1496,26 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         plt_item.addItem(txt)
         plot_dict['fitText'] = txt
 
+    def get_x_limits(self):
+        return np.max([self.sum_x[0], self.fit_config['min']]), np.min([self.sum_x[-1], self.fit_config['max']])
+
+    def get_mask_limits(self):
+        mask = self.sum_x < self.fit_config['min']
+        mask += self.sum_x > self.fit_config['max']
+        return ~mask
+
     def fit_spectrum(self):
         self.sum_x, self.sum_y, self.sum_err = self.spec_data.getArithSpec(
             self.sum_scaler, self.sum_track, self.function)
 
         if not self.cursor_xy_set:
-            self.set_cursor_xy(np.mean(self.sum_x), self.sum_y[0])
+            self.set_cursor_xy(np.mean(self.get_x_limits()), self.sum_y[0])
+        mask = self.get_mask_limits()
+        if not np.any(mask):
+            return
         model = self.fit_config['model']
         fixed, bounds = model.fit_prepare()
         fixed = [False for _ in fixed]
-        mask = self.sum_x < self.fit_config['min']
-        mask += self.sum_x > self.fit_config['max']
-        mask = ~mask
         try:
             popt, pcov = curve_fit(
                 model, self.sum_x[mask], self.sum_y[mask], p0=model.vals, p0_fixed=fixed, sigma=self.sum_err[mask],
@@ -1501,15 +1525,61 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
         self.display_fit(model, popt, pcov)
 
+    @staticmethod
+    def get_fwhm(model, popt, pcov):
+        i = model.p.get('sigma', -1)
+        sigma, sigma_d = 0., 0.
+        if i != -1:
+            sigma, sigma_d = popt[i], pcov[i, i]
+        i = model.p.get('Gamma', -1)
+        gamma, gamma_d = 0., 0.
+        if i != -1:
+            gamma, gamma_d = popt[i], pcov[i, i]
+        return fwhm_voigt(gamma, sigma), fwhm_voigt_d(gamma, gamma_d, sigma, sigma_d)
+
+    # @staticmethod
+    # def get_freq_results(model, popt, pcov):
+    #     iso = Cfg._main_instance.main.scan_pars['iso']
+    #     db = Cfg._main_instance.main.database
+    #     db_con = sqlite3.connect(db)
+    #     db_cur = db_con.cursor()
+    #     db_cur.execute('SELECT mass FROM Isotopes WHERE iso = ?', iso)
+    #     data = db_cur.fetchall()
+    #     m = data[0][0]
+    #     q = 1
+    #     u = Cfg._main_instance.main.acc_voltage
+    #     u -= Cfg._main_instance.main.scan_pars.get('postAccOffsetVolt', 0.)
+    #     f = freqFromWavenumber(Cfg._main_instance.main.laserfreq)
+    #     pt, pc = popt.copy(), pcov.copy()
+    #     for par in ['sigma', 'gamma']:
+    #         i = model.p.get(par, -1)
+    #         if i != -1:
+    #             pc[i] *= volt_to_rel_freq()
+    #     return pt, pc
+
     def display_fit(self, model, popt, pcov):
-        x = np.arange(np.max([self.sum_x[0], self.fit_config['min']]),
-                      np.min([self.sum_x[-1], self.fit_config['max']]), model.dx)
+        x_min, x_max = self.get_x_limits()
+        x = np.arange(x_min, x_max, model.dx)
         self.fit_data_item.setData(x, model(x, *popt))
-        digits = int(np.floor(np.log10(np.abs(model.size)))) + 1
-        text = 'Fit results:\n{}'.format(
-            '\n'.join(['{}:   {} = {} +/- {}'.format(str(i).zfill(digits), name, *Ts.clip_val_with_unc(val, err))
-                       for i, (name, val, err) in enumerate(zip(model.names, popt, np.sqrt(np.diag(pcov))))]))
+        self.fit_data_item.setOpacity(1)
+
+        digits = int(np.floor(np.log10(np.abs(model.size + 1)))) + 1
+        text = 'Fit results (V):\n{}\n{}\n\n'.format(
+            '\n'.join(['{}:   {} = {} +/- {}'.format(str(i).zfill(digits), name, *clip_val_with_unc(val, err))
+                       for i, (name, val, err) in enumerate(zip(model.names, popt, np.sqrt(np.diag(pcov))))]),
+            '{}:   FWHM = {} +/- {}'.format(model.size, *clip_val_with_unc(*self.get_fwhm(model, popt, pcov))))
+
+        # pt, pc = self.get_freq_results(model, popt, pcov)
+        # text += 'Fit results (MHz):\n{}\n{}'.format(
+        #     '\n'.join(['{}:   {} = {} +/- {}'.format(str(i).zfill(digits), name, *clip_val_with_unc(val, err))
+        #                for i, (name, val, err) in enumerate(zip(model.names, pt, np.sqrt(np.diag(pc))))]),
+        #     '{}:   FWHM = {} +/- {}'.format(model.size, *clip_val_with_unc(*self.get_fwhm(model, pt, pc))))
+
         self.browser_fitresults.setText(text)
+
+    def clear_fit(self):
+        self.fit_data_item.setData([], [])
+        self.fit_data_item.setOpacity(0)
 
     def toggle_fit_cursor(self):
         if self.action_fit_cursor.isChecked():
@@ -1534,25 +1604,27 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         if not self.cursor_xy_set:
             return
         model = self.fit_config['model']
-        x = np.arange(np.max([self.sum_x[0], self.fit_config['min']]),
-                      np.min([self.sum_x[-1], self.fit_config['max']]), model.dx)
+        x_min, x_max = self.get_x_limits()
+        x = np.arange(x_min, x_max, model.dx)
         if x.size == 0:
             return
         self.cursor_data = (x, model(x, *model.vals))
         self.fit_cursor_item.setData(*self.cursor_data)
 
     def set_cursor_xy(self, x, y):
-        # x_lims, y_lims = self.sum_plt_itm.vb.state['viewRange']
-        # dx, dy = (x_lims[1] - x_lims[0]) / 20, (y_lims[1] - y_lims[0]) / 20
+        mask = self.get_mask_limits()
+        if not np.any(mask):
+            return
         self.cursor_xy_set = True
         self.cursor_xy = (x, y)
         model = self.fit_config['model']
         spectrum = model.model.model
         model.set_val(model.p['x0'], x)
-        model.gen_offset_masks(self.sum_x)
-        model.guess_offset(self.sum_x, self.sum_y)
-        model.set_val(model.p['p0'], np.max(self.sum_y) - model.vals[model.p['off0e0']])
-        dx = 0.2 * (np.max([self.sum_x[0], self.fit_config['min']]) - np.min([self.sum_x[-1], self.fit_config['max']]))
+        model.gen_offset_masks(self.sum_x[mask])
+        model.guess_offset(self.sum_x[mask], self.sum_y[mask])
+        model.set_val(model.p['p0'], np.max(self.sum_y[mask]) - model.vals[model.p['off0e0']])
+        x_min, x_max = self.get_x_limits()
+        dx = 0.2 * (x_max - x_min)
         if spectrum.type in {'Lorentz', 'Voigt'}:
             model.set_val(model.p['Gamma'], dx)
         if spectrum.type in {'Gauss', 'Voigt'}:
@@ -1568,6 +1640,18 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             return
         mouse_point = self.sum_plt_itm.vb.mapSceneToView(event._scenePos)
         self.set_cursor_xy(mouse_point.x(), mouse_point.y())
+
+    def reset_cursor(self):
+        self.fit_config['min'] = -np.inf
+        self.fit_config['max'] = np.inf
+        if self.fit_fill_item in self.sum_plt_itm.items:
+            self.sum_plt_itm.removeItem(self.fit_fill_item)
+        self.fit_min_item.setData([], [])
+        self.fit_max_item.setData([], [])
+        self.fit_cursor_item.setData([], [])
+        self.cursor_xy_set = False
+        self.cursor_xy = (0., 0.)
+        self.cursor_data = None
 
     def toggle_set_limits(self):
         if self.action_set_limits.isChecked():
@@ -1589,24 +1673,32 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.fit_fill_item.setOpacity(0)
         self.setCursor(cur)
 
-    def set_limits(self, event):
-        if not self.action_set_limits.isChecked():
-            return
-        mouse_point = self.sum_plt_itm.vb.mapSceneToView(event._scenePos)
-        x = mouse_point.x()
+    def set_limits_x(self, x):
         if self.min_set:
-            x_data = np.array([x, x]) if x > self.fit_config['min'] else self.fit_min_item.xData.copy()
+            x_data = np.array([x, x]) if x > self.fit_config['min'] else self.fit_min_item.xData
             self.fit_config['max'] = x_data[0]
             self.fit_max_item.setData(x_data, self.fit_min_item.yData.copy())
             self.min_set = False
             if self.fit_fill_item not in self.sum_plt_itm.items:
                 self.sum_plt_itm.addItem(self.fit_fill_item)
         else:
-            x_data = np.array([x, x]) if x < self.fit_config['max'] else self.fit_max_item.xData.copy()
+            x_data = np.array([x, x]) if x < self.fit_config['max'] else self.fit_max_item.xData
             self.fit_config['min'] = x_data[0]
             self.fit_min_item.setData(x_data, np.array([np.min(self.sum_y), np.max(self.sum_y)]))
             self.min_set = True
         self.update_cursor_data()
+
+    def set_limits(self, event):
+        if not self.action_set_limits.isChecked():
+            return
+        mouse_point = self.sum_plt_itm.vb.mapSceneToView(event._scenePos)
+        self.set_limits_x(mouse_point.x())
+    
+    def rescale_limits(self):
+        if self.fit_min_item.xData is not None:
+            self.fit_min_item.setData(self.fit_min_item.xData, np.array([np.min(self.sum_y), np.max(self.sum_y)]))
+        if self.fit_max_item.xData is not None:
+            self.fit_max_item.setData(self.fit_max_item.xData, np.array([np.min(self.sum_y), np.max(self.sum_y)]))
 
     def toggle_fit_auto(self):
         pass
@@ -1627,14 +1719,21 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             for a in self.menu_track.actions():
                 a.setChecked(False)
         action.toggle()
-        self.menu_track.setTitle(action.text() + '\tCtrl+T  ')
+        text = action.text()
+        self.menu_track.setTitle(text + '\tCtrl+T  ')
+        i = text.find('track')
+        text = text[(i + 5):(i + 6)]
+        self.sum_track = -1 if text == 's' else int(text)
+        self.update_sum_plot(self.spec_data)
+        self.reset_cursor()
+        self.clear_fit()
 
     def set_lineshape(self, shape):
         self.fit_config['model'] = Offset(NPeak(eval(shape)()))
         if self.cursor_xy_set:
             self.set_cursor_xy(*self.cursor_xy)
         else:
-            self.set_cursor_xy(np.mean(self.sum_x), self.sum_y[0])
+            self.set_cursor_xy(np.mean(self.get_x_limits()), self.sum_y[0])
 
     def next_lineshape(self, _next):
         actions = self.menu_lineshape.actions() if _next else self.menu_lineshape.actions()[::-1]

@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'E:\Users\Patrick\Documents\Python Projects\Tilda\Tilda\Interface\LiveDataPlottingUi\Ui_LiveDataPlotting.ui'
 #
-# Created by: PyQt5 UI code generator 5.13.2
+# Created by: PyQt5 UI code generator 5.14.1
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -373,7 +373,6 @@ class Ui_MainWindow_LiveDataPlotting(object):
         self.menu_lineshape.addAction(self.action_lorentz)
         self.menu_lineshape.addAction(self.action_gauss)
         self.menu_lineshape.addAction(self.action_voigt)
-        self.menu_track.addAction(self.action_track0)
         self.menufit.addAction(self.action_fit)
         self.menufit.addAction(self.action_clear)
         self.menufit.addAction(self.action_fit_auto)
@@ -438,7 +437,7 @@ class Ui_MainWindow_LiveDataPlotting(object):
         self.menunorm.setTitle(_translate("MainWindow_LiveDataPlotting", "normalize"))
         self.menufit.setTitle(_translate("MainWindow_LiveDataPlotting", "fit"))
         self.menu_lineshape.setTitle(_translate("MainWindow_LiveDataPlotting", "Voigt"))
-        self.menu_track.setTitle(_translate("MainWindow_LiveDataPlotting", "track0"))
+        self.menu_track.setTitle(_translate("MainWindow_LiveDataPlotting", "track"))
         self.actionProgress.setText(_translate("MainWindow_LiveDataPlotting", "progress"))
         self.actionProgress.setShortcut(_translate("MainWindow_LiveDataPlotting", "Ctrl+P"))
         self.actionGraph_font_size.setText(_translate("MainWindow_LiveDataPlotting", "graph font size"))
@@ -465,7 +464,7 @@ class Ui_MainWindow_LiveDataPlotting(object):
         self.action_voigt.setText(_translate("MainWindow_LiveDataPlotting", "Voigt"))
         self.action_lorentz.setText(_translate("MainWindow_LiveDataPlotting", "Lorentz"))
         self.action_gauss.setText(_translate("MainWindow_LiveDataPlotting", "Gauss"))
-        self.action_fit_cursor.setText(_translate("MainWindow_LiveDataPlotting", "set center"))
+        self.action_fit_cursor.setText(_translate("MainWindow_LiveDataPlotting", "set cursor"))
         self.action_fit_cursor.setShortcut(_translate("MainWindow_LiveDataPlotting", "Ctrl+G"))
         self.action_fit_config.setText(_translate("MainWindow_LiveDataPlotting", "config ..."))
         self.action_track0.setText(_translate("MainWindow_LiveDataPlotting", "track0"))

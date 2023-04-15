@@ -49,7 +49,7 @@ draft_tipa_scan_pars = {
                'dacStartRegister18Bit': 0,
                'nOfSteps': None,
                'nOfScans': 10, 'nOfCompletedSteps': 0, 'invertScan': False,
-               'postAccOffsetVoltControl': 0, 'postAccOffsetVolt': 1000,
+               'postAccOffsetVoltControl': 0, 'postAccOffsetVolt': 0,
                'waitForKepco25nsTicks': 400,
                'waitAfterReset25nsTicks': 20000,
                'activePmtList': [0, 1, 2, 3],
