@@ -23,16 +23,17 @@ def merge_dicts(d1, d2):
     return new
 
 
-def numpy_array_from_string(string, shape, datatytpe=np.uint32):
+def numpy_array_from_string(string, shape, dtype=int):
     """
     converts a text array saved in an lxml.etree.Element
     using the function xmlWriteToTrack back into a numpy array
     :param string: str, array
     :param shape: int, or tuple of int, the shape of the output array
+    :param dtype: The numpy data type.
     :return: numpy array containing the desired values
     """
     string = string.replace('\\n', '').replace('[', '').replace(']', '').replace('  ', ' ')
-    result = np.fromstring(string, dtype=datatytpe, sep=' ')
+    result = np.fromstring(string, dtype=dtype, sep=' ')
     result = result.reshape(shape)
     return result
 
@@ -75,13 +76,13 @@ def load_xml(filename):
     return elem
 
 
-def save_xml(root_Ele, path, pretty=True):
+def save_xml(root_ele, path, pretty=True):
     """
     Convert a Root lxml Element into an ElementTree and save it to a file
     """
     logging.debug('saving .xml file: %s' % path)
     np.set_printoptions(threshold=np.nan)
-    tree = et.ElementTree(root_Ele)
+    tree = et.ElementTree(root_ele)
     tree.write(path, pretty_print=pretty)
 
 
@@ -107,20 +108,22 @@ def get_all_tracks_of_xml_in_one_dict(xml_file):
     return trackd
 
 
-def xml_get_data_from_track(root_ele, n_of_track, data_type, data_shape, datatytpe=np.uint32):
+def xml_get_data_from_track(root_ele, n_of_track, data_type, data_shape, dtype=int):
     """
-    Get Data From Track
+    Get data from track.
+
     :param root_ele:  lxml.etree.Element, root of the xml tree
     :param n_of_track: int, which Track should be written to
     :param data_type: str, valid: 'setOffset, 'measuredOffset', 'dwellTime10ns', 'nOfmeasuredSteps',
      'nOfclompetedLoops', 'voltArray', 'timeArray', 'scalerArray'
-    :param returnType: int or tuple of int, shape of the numpy array, 0 if output in textfrom is desired
+    :param data_shape: int or tuple of int, shape of the numpy array, 0 if output in textfrom is desired
+    :param dtype: The numpy data type.
     :return: Text
     """
     try:
-        actTrack = root_ele.find('tracks').find('track' + str(n_of_track)).find('data')
-        dataText = actTrack.find(str(data_type)).text
-        data_numpy = numpy_array_from_string(dataText, data_shape, datatytpe)
+        act_track = root_ele.find('tracks').find('track' + str(n_of_track)).find('data')
+        data_text = act_track.find(str(data_type)).text
+        data_numpy = numpy_array_from_string(data_text, data_shape, dtype)
         return data_numpy
     except Exception as e:
         print('error while searching ' + str(data_type) + ' in track' + str(n_of_track) + ' in ' + str(root_ele))
@@ -254,12 +257,12 @@ def find_closest_value_in_arr(arr, search_val):
 
 
 if __name__ == '__main__':
-    path = os.path.join(os.path.dirname(__file__), os.path.pardir, os.path.pardir,
-                        'test\\Project\\Data\\testTildaTRS.xml')
-    scan_d, lxml_root_ele = scan_dict_from_xml_file(path)
+    _path = os.path.join(os.path.dirname(__file__), os.path.pardir, os.path.pardir,
+                         'test\\Project\\Data\\testTildaTRS.xml')
+    scan_d, lxml_root_ele = scan_dict_from_xml_file(_path)
     num_of_steps = scan_d['track0']['nOfSteps']
     nOfBins = scan_d['track0']['nOfBins']
     nOfScalers = len(scan_d['track0']['activePmtList'])
     cts_shape = (nOfScalers, num_of_steps, nOfBins)
-    data = xml_get_data_from_track(lxml_root_ele, 0, 'scalerArray', cts_shape)
-    print(data)
+    _data = xml_get_data_from_track(lxml_root_ele, 0, 'scalerArray', cts_shape)
+    print(_data)

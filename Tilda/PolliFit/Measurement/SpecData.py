@@ -14,7 +14,7 @@ from enum import Enum
 
 class SpecDataXAxisUnits(Enum):
     line_volts = 'line voltage / V'  # from DAC
-    total_volts = 'total volts / V'  # from  AccVolt + Offset + line_volt * Kepco (usually after preProc)
+    total_volts = 'total volts / V'  # from  AccVolt + Offset + line_volt * Kepco (usually after pre_process)
     dac_register_bits = 'DAC register bits / a.u.'
     # when calibrating an DAC it might be usefull to have DAC register bits as x axis
     frequency_mhz = 'frequency / MHz'  # for plotting etc.
@@ -96,16 +96,16 @@ class SpecData(object):
             """ get maximum number of scalers """
             if isinstance(self.nrScalers, list):
                 if track_index == -1:
-                    nrScalers = self.nrScalers[0]
+                    nr_scalers = self.nrScalers[0]
                 else:
-                    nrScalers = self.nrScalers[track_index]
+                    nr_scalers = self.nrScalers[track_index]
             else:
-                nrScalers = self.nrScalers
+                nr_scalers = self.nrScalers
 
             """ go throug all scalers used for sum and add counts up"""
             for s in scaler:
                 s = int(s)
-                if nrScalers > np.abs(s):  # check if scaler exists
+                if nr_scalers > np.abs(s):  # check if scaler exists
                     flatx, c, e = self.getSingleSpec(abs(s), track_index)
                     flatc = flatc + np.copysign(np.ones_like(c), s) * c
                     flate = flate + np.square(e)
@@ -208,10 +208,10 @@ class SpecData(object):
 
     def _normalizeTracks(self):
         """ Check whether a different number of loops was used for the different tracks and correct """
-        maxLoops = max(self.nrLoops)
+        max_loops = max(self.nrLoops)
         for i in range(0, self.nrTracks):
-            if self.nrLoops[i] < maxLoops:
-                self._multScalerCounts(i, maxLoops / self.nrLoops[i])
+            if self.nrLoops[i] < max_loops:
+                self._multScalerCounts(i, max_loops / self.nrLoops[i])
 
     def _multScalerCounts(self, scaler, mult):
         """ Multiply counts and error of a specific scaler by mult, according to error propagation """

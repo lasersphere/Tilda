@@ -60,7 +60,7 @@ class TLDImporter(SpecData):
                     self.err[0][j][i] = max(np.sqrt(float(counts.replace(',', '.'))), 1)
  
  
-    def preProc(self, db):
+    def pre_process(self, db):
         print('TLDImporter is using db', db)
         con = sqlite3.connect(db)
         cur = con.cursor()

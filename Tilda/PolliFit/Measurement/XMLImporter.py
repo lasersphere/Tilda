@@ -20,6 +20,13 @@ from Tilda.Service.Scan.draftScanParameters import draft_scan_device
 import Tilda.Service.VoltageConversions.VoltageConversions as VCon
 
 
+METADATA_CHANNELS = dict(
+    accVolt=['agilent', 'pxi', 'hv', 'voltage', 'accvolt'],
+    offset=['agilent', 'pxi', 'offset'],
+    frequency=['laser_freq_mult', 'frequency']
+)
+
+
 class XMLImporter(SpecData):
     """
     This Module Reads the .xml files or reads from a given scan_dictionary.
@@ -27,12 +34,13 @@ class XMLImporter(SpecData):
 
     def __init__(self, path=None, x_as_volt=True, scan_dict=None, softw_gates=None):
         """
-        read the xml file
+        Class representing an XML file.
+
         :param path: str, path to the xml file, set None to load from scan_dict
         :param x_as_volt: bool, True for voltage, False for DAC register
         :param scan_dict: dict, contains all scan information,
          can be used to create a xmlimporter object instead of a .xml file
-        :param softw_gates:  
+        :param softw_gates:
             None: read gates from File
             tuple: (db_str, run_str) -> read software gates from db
             list: [
@@ -42,30 +50,27 @@ class XMLImporter(SpecData):
             also possible list: (use same gates for all tracks)
             [[tr0_sc0_vmin, tr0_sc0_vmax, tr0_sc0_t_min, tr0_sc0_tmax], [other sc]]
         """
+        super(XMLImporter, self).__init__()
 
         self.file = None
-
-        super(XMLImporter, self).__init__()
         if path is not None:
-            logging.info("XMLImporter is reading file " + path)
+            logging.info('XMLImporter is reading file ' + path)
             self.file = os.path.basename(path)
-            scandict, lxmlEtree = TildaTools.scan_dict_from_xml_file(path)
+            scan_dict, lxml_etree = TildaTools.scan_dict_from_xml_file(path)
         else:
-            logging.info("XMLImporter is reading from scan_dictionary " + str(scan_dict))
-            lxmlEtree = None
-            scandict = scan_dict
-            self.file = os.path.basename(scandict['pipeInternals']['activeXmlFilePath'])
-            path = scandict['pipeInternals']['activeXmlFilePath']  # needed for get_frequency_measurement(...)
+            logging.info('XMLImporter is reading from scan_dictionary ' + str(scan_dict))
+            lxml_etree = None
+            self.file = os.path.basename(scan_dict['pipeInternals']['activeXmlFilePath'])
+            # path = scan_dict['pipeInternals']['activeXmlFilePath']
 
-        self.nrTracks = scandict['isotopeData']['nOfTracks']
-
-        self.laserFreq, self.laserFreq_d = Physics.freqFromWavenumber(scandict['isotopeData']['laserFreq']), 0.0
-        self.date = scandict['isotopeData']['isotopeStartTime']  # might be overwritten below by the mid time of the iso
+        self.nrTracks = scan_dict['isotopeData']['nOfTracks']
+        self.date = scan_dict['isotopeData']['isotopeStartTime']  # might be overwritten below
+        # by the mid-time of the iso
         self.date_d = 0.0  # uncertainty of the date in s might be overwritten
         # at the end of tracks readout should be file_length / 2
-        self.type = scandict['isotopeData']['isotope']
-        self.seq_type = scandict['isotopeData']['type']
-        self.version = scandict['isotopeData']['version']
+        self.type = scan_dict['isotopeData']['isotope']
+        self.seq_type = scan_dict['isotopeData']['type']
+        self.version = scan_dict['isotopeData']['version']
         self.version_list = [int(n) for n in self.version.split('.')]
         if len(self.version_list) < 3:
             self.version_list.append(0)
@@ -83,24 +88,44 @@ class XMLImporter(SpecData):
                             'key words therefore are: AD5781, ad5781, dac_calibration\n'
                             'do not use those for the isotope name if you do not want this!\n'
                             '--------------------------WARNING----------------------------------\n')
-            x_as_volt = False  # assume this is a gauge measurement of the DAC, so set the x axis in DAC registers
+            x_as_volt = False  # assume this is a gauge measurement of the DAC, so set the x-axis in DAC registers
             self.dac_calibration_measurement = True
 
-        self.offset_by_dev, self.offset_by_dev_mean, self.offset = self.get_dmm_measurement(scandict, 'offset')
-        self.acc_volt_by_dev, self.acc_volt_by_dev_mean, self.accVolt = self.get_dmm_measurement(scandict, 'accVolt')
-        if len(self.accVolt):
-            self.accVolt = np.mean(self.accVolt)  # accvolt is assumed to be constant all the time. -> just one float
-        else:
-            # take the value as set from the gui if dmms did not measure it.
-            self.accVolt = scandict['isotopeData']['accVolt']
+        ''' Get voltage and frequency metadata from scan_dict or XML file '''
+        self.meta_data_channels = dict(accVolt='', offset='', frequency='')
+        # take the GUI value if it was not measured.
+        self.accVolt, self.accVolt_d = scan_dict['isotopeData']['accVolt'], 0.
+        voltages = self.get_metadata_measurement(scan_dict, 'accVolt')
+        if voltages and any(d for d in voltages):
+            voltages = [u for u_track in voltages for u in u_track]  # Currently there is only 1 voltage allowed.
+            self.accVolt = np.mean(voltages)
+            self.accVolt_d = np.std(voltages, ddof=1) if len(voltages) > 1 else 0.
+
+        # take the GUI value if it was not measured.
+        self.offset = [scan_dict[track]['postAccOffsetVolt'] for track in TildaTools.get_track_names(scan_dict)]
+        # self.offset_by_dev, self.offset_by_dev_mean, self.offset = self.get_dmm_measurement(scan_dict, 'offset')
+        self.offset_by_dev = [{} for _ in TildaTools.get_track_names(scan_dict)]  # TODO: Get rid of this or implement.
+        self.offset_by_dev_mean = [{} for _ in TildaTools.get_track_names(scan_dict)]
+        offsets = self.get_metadata_measurement(scan_dict, 'offset')
+        if offsets and all(d for d in offsets):
+            self.offset = [np.mean(d) for d in offsets]  # Offset voltages are required per track.
+
+        # take the GUI value if it was not measured.
+        self.laserFreq, self.laserFreq_d = Physics.freqFromWavenumber(scan_dict['isotopeData']['laserFreq']), 0.
+        frequencies = self.get_metadata_measurement(scan_dict, 'frequency')
+        if frequencies and any(d for d in frequencies):
+            # Currently there is only 1 frequency allowed.
+            frequencies = [f for f_track in frequencies for f in f_track]
+            self.laserFreq = np.mean(frequencies)
+            self.laserFreq_d = np.std(frequencies, ddof=1) if len(frequencies) > 1 else 0.
 
         self.nrScalers = []  # number of scalers for this track
         self.active_pmt_list = []  # list of scaler/pmt names for this track
         # if self.seq_type in ['tipa', 'tipadummy', 'kepco']:
         # x_as_volt = False
         logging.debug('axaxis as voltage: %s ' % x_as_volt)
-        self.x = TildaTools.create_x_axis_from_file_dict(scandict, as_voltage=x_as_volt)  # x axis, voltage
-        self.x_dac = TildaTools.create_x_axis_from_file_dict(scandict, as_voltage=False)  # handy for importing files
+        self.x = TildaTools.create_x_axis_from_file_dict(scan_dict, as_voltage=x_as_volt)  # x axis, voltage
+        self.x_dac = TildaTools.create_x_axis_from_file_dict(scan_dict, as_voltage=False)  # handy for importing files
         self.cts = []  # countervalues, this is the voltage projection here
         self.err = []  # error to the countervalues
         self.t_proj = []  # time projection only for time resolved
@@ -118,7 +143,7 @@ class XMLImporter(SpecData):
         self.col = False  # should also be a list for multiple tracks
         self.dwell = []
         self.softw_gates = []
-        self.track_names = TildaTools.get_track_names(scandict)
+        self.track_names = TildaTools.get_track_names(scan_dict)
         logging.debug('track_names are: %s ' % self.track_names)
         self.softBinWidth_ns = []
         self.post_acc_offset_volt_control = []  # which heinzinger / Fluke
@@ -133,10 +158,11 @@ class XMLImporter(SpecData):
         self.tritonPars = []
         self.sqlPars = []
         self.outbitsPars = []
-        ''' operations on each track: '''
-        for tr_ind, tr_name in enumerate(TildaTools.get_track_names(scandict)):
 
-            track_dict = scandict[tr_name]
+        ''' Operations on each track: '''
+        for tr_ind, tr_name in enumerate(TildaTools.get_track_names(scan_dict)):
+
+            track_dict = scan_dict[tr_name]
             scan_dev_dict_tr = track_dict.get('scanDevice', draft_scan_device)
             self.scan_dev_dict_tr_wise.append(scan_dev_dict_tr)
             # overwrite with last of tracks, but should be the same unit for all tracks anyhow (hopefully)
@@ -147,11 +173,11 @@ class XMLImporter(SpecData):
             self.outbitsPars.append(track_dict.get('outbits', {}))
             self.col = track_dict['colDirTrue']
 
-            nOfactTrack = int(tr_name[5:])
-            nOfsteps = track_dict['nOfSteps']
-            self.nrSteps.append(nOfsteps)
-            nOfBins = track_dict.get('nOfBins')
-            nOfScalers = len(track_dict['activePmtList'])
+            n_act_track = int(tr_name[5:])
+            n_steps = track_dict['nOfSteps']
+            self.nrSteps.append(n_steps)
+            n_bins = track_dict.get('nOfBins')
+            n_scalers = len(track_dict['activePmtList'])
             self.nrBunches += track_dict.get('nOfBunches', 1),
             self.active_pmt_list.append(track_dict['activePmtList'])
 
@@ -172,17 +198,17 @@ class XMLImporter(SpecData):
                 self.wait_for_kepco_1us.append(track_dict['waitForKepco1us'])
 
             self.working_time.append(track_dict['workingTime'])
-            self.nrScans.append(track_dict['nOfCompletedSteps'] // nOfsteps)
+            self.nrScans.append(track_dict['nOfCompletedSteps'] // n_steps)
             self.nrLoops.append(max([self.nrScans[-1], 1]))
 
-            dacStepSize18Bit = track_dict.get('dacStepSize18Bit', None)  # leave in for backwards_comp
-            if dacStepSize18Bit is None or dacStepSize18Bit == {}:  # TODO: not nice...
+            dac_step_size18_bit = track_dict.get('dacStepSize18Bit', None)  # leave in for backwards_comp
+            if dac_step_size18_bit is None or dac_step_size18_bit == {}:  # TODO: not nice...
                 # TODO: copy/paste from laptop. dacStepsizeVoltage is set correctly in file.
                 #  So why load through 'start'?
                 # step_size = track_dict['dacStepsizeVoltage']  # OLD. does not exist in dummy scan dicts (and other??)
                 step_size = scan_dev_dict_tr.get('stepSize', 1)
             else:
-                step_size = VCon.get_stepsize_in_volt_from_bits(dacStepSize18Bit)
+                step_size = VCon.get_stepsize_in_volt_from_bits(dac_step_size18_bit)
             self.stepSize.append(step_size)
 
             if track_dict.get('trigger', {}).get('meas_trigger', None) is not None:
@@ -194,21 +220,21 @@ class XMLImporter(SpecData):
                                     'scan_trigger': track_dict.get('scan_trigger', None)
                                     })
 
-            self.nrScalers.append(nOfScalers)
+            self.nrScalers.append(n_scalers)
             self.col = track_dict['colDirTrue']
 
             if self.seq_type in ['trs', 'tipa', 'trsdummy']:
                 self.softBinWidth_ns.append(track_dict.get('softBinWidth_ns', 10))
-                self.t = TildaTools.create_t_axis_from_file_dict(scandict, with_delay=True)  # force 10 ns resolution
-                cts_shape.append((nOfScalers, nOfsteps, nOfBins))
+                self.t = TildaTools.create_t_axis_from_file_dict(scan_dict, with_delay=True)  # force 10 ns resolution
+                cts_shape.append((n_scalers, n_steps, n_bins))
                 scaler_array = TildaTools.xml_get_data_from_track(
-                    lxmlEtree, nOfactTrack, 'scalerArray', cts_shape[tr_ind])
+                    lxml_etree, n_act_track, 'scalerArray', cts_shape[tr_ind])
                 # maybe the file has non-standard errors. Try to import them. Fail will return NONE:
                 error_array = TildaTools.xml_get_data_from_track(
-                    lxmlEtree, nOfactTrack, 'errorArray', cts_shape[tr_ind], create_if_no_root_ele=False)
+                    lxml_etree, n_act_track, 'errorArray', cts_shape[tr_ind], create_if_no_root_ele=False)
 
                 v_proj = TildaTools.xml_get_data_from_track(
-                    lxmlEtree, nOfactTrack, 'voltage_projection', (nOfScalers, nOfsteps),
+                    lxml_etree, n_act_track, 'voltage_projection', (n_scalers, n_steps),
                     direct_parent_ele_str='projections')
 
                 t_proj = None
@@ -247,30 +273,31 @@ class XMLImporter(SpecData):
                             if new_gates is not None:
                                 # when db states -> use file,
                                 # software gates from file will not be overwritten
-                                scandict[tr_name]['softwGates'] = new_gates
+                                scan_dict[tr_name]['softwGates'] = new_gates
                         else:
                             try:  # for more than three tracks, list index can go out off range
                                 if isinstance(softw_gates[tr_ind][0], list):
                                     # software gates are defined for each track individually
-                                    scandict[tr_name]['softwGates'] = softw_gates[tr_ind]
+                                    scan_dict[tr_name]['softwGates'] = softw_gates[tr_ind]
                                 else:
                                     # software gates are only defined for one track
                                     # -> one dimension less than for all tracks.
                                     # -> need to be copied for the others
-                                    scandict[tr_name]['softwGates'] = softw_gates
+                                    scan_dict[tr_name]['softwGates'] = softw_gates
                             except IndexError:
                                 # index error means its not per track!
-                                scandict[tr_name]['softwGates'] = softw_gates
+                                scan_dict[tr_name]['softwGates'] = softw_gates
 
                     v_proj, t_proj = TildaTools.gate_one_track(
-                        tr_ind, nOfactTrack, scandict, self.time_res, self.t, self.x, [])[0]
+                        tr_ind, n_act_track, scan_dict, self.time_res, self.t, self.x, [])[0]
                 self.cts.append(v_proj)
 
                 if error_array is not None:
                     # errors are explicitly given. Use those.
                     # first gate the errors
                     v_proj_err, t_proj_err = TildaTools.gate_one_track(
-                        tr_ind, nOfactTrack, scandict, [np.square(tr_arr) for tr_arr in self.time_res_err], self.t, self.x, [])[0]
+                        tr_ind, n_act_track, scan_dict, [np.square(tr_arr) for tr_arr in self.time_res_err],
+                        self.t, self.x, [])[0]
                     # square errors first, then sum along the projection, now take the sqrt again.
                     self.err.append(np.sqrt(v_proj_err))
                 else:
@@ -283,13 +310,13 @@ class XMLImporter(SpecData):
                 self.dwell.append(dwell)
 
             elif self.seq_type in ['cs', 'csdummy']:
-                cts_shape = (nOfScalers, nOfsteps)
+                cts_shape = (n_scalers, n_steps)
                 scaler_array = TildaTools.xml_get_data_from_track(
-                    lxmlEtree, nOfactTrack, 'scalerArray', cts_shape)
+                    lxml_etree, n_act_track, 'scalerArray', cts_shape)
                 self.cts.append(scaler_array)
                 # maybe the file has non-standard errors. Try to import them. Fail will return NONE:
                 error_array = TildaTools.xml_get_data_from_track(
-                    lxmlEtree, nOfactTrack, 'errorArray', cts_shape, create_if_no_root_ele=False)
+                    lxml_etree, n_act_track, 'errorArray', cts_shape, create_if_no_root_ele=False)
                 if error_array is None:
                     # if no errors were specified, use standard errors
                     self.err.append(np.sqrt(np.abs(scaler_array)))
@@ -302,16 +329,16 @@ class XMLImporter(SpecData):
             elif self.seq_type in ['kepco']:
                 if self.version_list[0] <= 1 and self.version_list[1] <= 12:
                     # kept this for older versions
-                    meas_volt_dict = scandict['measureVoltPars']['duringScan']
+                    meas_volt_dict = scan_dict['measureVoltPars']['duringScan']
                 else:
-                    meas_volt_dict = scandict['track0']['measureVoltPars']['duringScan']
+                    meas_volt_dict = scan_dict['track0']['measureVoltPars']['duringScan']
                 dmms_dict = meas_volt_dict['dmms']
                 dmm_names = list(sorted(dmms_dict.keys()))
                 self.nrScalers = [len(dmm_names)]
                 self.active_pmt_list = [dmm_names]
-                cts_shape = (self.nrScalers[0], nOfsteps)
+                cts_shape = (self.nrScalers[0], n_steps)
                 dmm_volt_array = TildaTools.xml_get_data_from_track(
-                    lxmlEtree, nOfactTrack, 'scalerArray', cts_shape, np.float, default_val=np.nan)
+                    lxml_etree, n_act_track, 'scalerArray', cts_shape, np.float, default_val=np.nan)
                 # TODO: np.nan might be causing problems!
                 self.cts.append(dmm_volt_array)
                 err = []
@@ -326,15 +353,13 @@ class XMLImporter(SpecData):
                 self.err.append(err)
 
         self.convert_date_to_mid_time()
-
-        self.laserFreq, self.laserFreq_d = self.get_frequency_measurement(path, self.tritonPars)
         logging.info('%s was successfully imported' % self.file)
 
-    def preProc(self, db):
+    def pre_process(self, db):
+        con = None
         try:
             logging.info('XMLImporter is using db: %s' % db)
             con = sqlite3.connect(db)
-            cur = con.cursor()
             if self.seq_type not in ['kepco']:  # do not change the x axis for a kepco scan!
                 db_ret = TildaTools.select_from_db(db, 'type, line, offset, accVolt, laserFreq, colDirTrue,'
                                                        ' voltDivRatio, lineMult, lineOffset, laserFreq_d',
@@ -358,7 +383,7 @@ class XMLImporter(SpecData):
                 except Exception as e:
                     logging.error('error, converting voltage divider ratio from db, error is: ' + str(e), exc_info=True)
                     logging.info('setting voltage divider ratio to 1 !')
-                    self.voltDivRatio = {'offset': 1.0, 'accVolt': 1.0}
+                    self.voltDivRatio = {'offset': 1.0, 'accVolt': 1.0, 'laserFreq': 1.0}
                 if 'CounterDrift' in self.scan_dev_dict_tr_wise[0]['name']:
                     for tr_ind, track in enumerate(self.x):
                         self.x[tr_ind] = track * self.lineMult + self.lineOffset
@@ -370,13 +395,10 @@ class XMLImporter(SpecData):
                         self.x[tr_ind] = TildaTools.line_to_total_volt(
                             self.x[tr_ind], self.lineMult, self.lineOffset, self.offset[tr_ind], self.accVolt,
                             self.voltDivRatio, offset_by_dev_mean=self.offset_by_dev_mean[tr_ind])
-
-                    # self.norming()
-                    # TODO: Do we always want this? No norming is done when regating from trs plot.
-                    #  Make consistent and maybe include to global options?
-                    #  EDIT: Normalization to the number of scans is included in SpectraFit now.
-                    #  The 'norming' function modifies the signal to background ratios which is not nice in my opinion.
                     self.x_units = self.x_units_enums.total_volts
+                self.laserFreq *= self.voltDivRatio['laserFreq']
+                self.laserFreq_d *= self.voltDivRatio['laserFreq']
+
             elif self.seq_type == 'kepco':  # correct kepco scans by the measured offset before the scan.
                 db_ret = TildaTools.select_from_db(db, 'offset', 'Files', [['file'], [self.file]])
                 # cur.execute('''SELECT offset FROM Files WHERE file = ?''', (self.file,))
@@ -403,7 +425,8 @@ class XMLImporter(SpecData):
         except Exception as e:
             logging.error(
                 'error while preprocessing file %s, error is: %s, check db values!' % (self.file, e), exc_info=True)
-            con.close()
+            if con is not None:
+                con.close()
 
     def export(self, db):
         try:
@@ -425,7 +448,8 @@ class XMLImporter(SpecData):
         except Exception as e:
             logging.error('error while exporting values from file %s, error is: %s' % (self.file, e), exc_info=True)
 
-    def evalErr(self, cts, f):
+    @staticmethod
+    def eval_err(cts, f):
         cts = cts.reshape(-1)
         for i, v in enumerate(cts):
             cts[i] = f(v)
@@ -443,19 +467,65 @@ class XMLImporter(SpecData):
             n_of_bins_tr = -1
         return n_of_scalers_tr, n_of_steps_tr, n_of_bins_tr
 
-    def norming(self):
-        # TODO this is copied from MCP, still the dwell is not implemented in this!
-        for trackindex, track in enumerate(self.cts):
-            track = track.astype(np.float32)
-            self.cts[trackindex] = track
-            for ctIndex, ct in enumerate(track):
-                min_nr_of_scan = max(np.min(self.nrScans), 1)  # maybe there is a track with 0 complete scans
-                nr_of_scan_this_track = self.nrScans[trackindex]
-                if nr_of_scan_this_track:
-                    # dtype int32 causes problems here!
-                    self.cts[trackindex][ctIndex] = ct * min_nr_of_scan / nr_of_scan_this_track
-                    self.err[trackindex][ctIndex] = self.err[trackindex][
-                                                        ctIndex] * min_nr_of_scan / nr_of_scan_this_track
+    def get_data_str(self, dev):
+        if dev == 'dmms':
+            return 'preScanRead' if self.version_list[0] <= 1 and self.version_list[1] <= 17 else 'readings'
+        return 'data'
+
+    def find_metadata_key(self, meta_dict, mtype):
+        # TODO: Let the user choose the channel.
+        dev_ch = self.meta_data_channels[mtype]
+        if dev_ch:
+            data_key = self.get_data_str(dev_ch[:dev_ch.find('.')])
+            return dev_ch, data_key
+
+        for _ch in METADATA_CHANNELS[mtype]:
+            for dev_ch, ch_dict in meta_dict.items():
+                i = dev_ch.find('.')
+                dev = dev_ch[:i]
+                ch = dev_ch[(i + 1):]
+                data_key = self.get_data_str(dev)
+                if _ch in ch.lower():
+                    if dev == 'dmms' and ch_dict.get('assignment', 'accVolt') != mtype:
+                        continue
+                    if dev != 'dmms' and mtype == 'offset' and _ch in {'agilent', 'pxi'}:
+                        continue  # We do not want to interpret the HV as an offset.
+                    # self.meta_data_channels[mtype] = dev_ch
+                    return dev_ch, data_key
+        return None, None
+
+    def get_metadata_measurement_pre_dur_post_track(self, scan_dict, pre_dur_post, track, mtype):
+        tr_dict = scan_dict[track]
+        meta_dict = []
+        dmm = {'dmms.{}'.format(ch): ch_dict
+               for ch, ch_dict in tr_dict.get('measureVoltPars', {}).get(pre_dur_post, {}).get('dmms', {}).items()}
+        meta_dict.append(dmm)
+        _triton = tr_dict.get('triton', {}).get(pre_dur_post, {})
+        triton = {}
+        for dev, dev_dict in _triton.items():
+            if 'data' in list(dev_dict.keys()):
+                triton[dev] = dev_dict
+            else:
+                for ch, ch_dict in dev_dict.items():
+                    triton['{}.{}'.format(dev, ch)] = ch_dict
+        meta_dict.append(triton)
+        meta_dict.append(tr_dict.get('sql', {}).get(pre_dur_post, {}))
+        meta_dict = TildaTools.merge_dicts(*meta_dict)
+        dev_ch, data_key = self.find_metadata_key(meta_dict, mtype)
+        if dev_ch is not None:
+            return meta_dict[dev_ch][data_key]
+        return []
+
+    def get_metadata_measurement_track(self, scan_dict, track, mtype):
+        data = self.get_metadata_measurement_pre_dur_post_track(scan_dict, 'duringScan', track, mtype)
+        if not data:
+            data = self.get_metadata_measurement_pre_dur_post_track(scan_dict, 'preScan', track, mtype) \
+                + self.get_metadata_measurement_pre_dur_post_track(scan_dict, 'postScan', track, mtype)
+        return data
+
+    def get_metadata_measurement(self, scan_dict, mtype):
+        return [self.get_metadata_measurement_track(scan_dict, track, mtype)
+                for track in TildaTools.get_track_names(scan_dict)]
 
     def get_dmm_measurement(self, scandict, assignment='offset'):
         """
@@ -550,119 +620,6 @@ class XMLImporter(SpecData):
             offset_by_dev_mean = [{'setValue': each} for each in set_value_list]
             offset_by_dev = [{'setValue': [[each], [each]]} for each in set_value_list]
         return offset_by_dev, offset_by_dev_mean, offset_mean
-
-    def get_frequency_measurement(self, path, scan_triton_dict):
-        """
-        TODO: Method is statistically not exact if more than one comb reading is used
-         for a single track (mean of means).
-        It is assumed the frequency has been measured before and/or after first measurement track since
-        frequency measurements per track like [f1, f2, ..] is not (yet) supported.
-        The frequency measurement is measured by Triton device FrequencyComb1 and/or FrequencyComb2. The first found
-        frequency is used for the DB, every found frequency is written into the console.
-        The frequency is calculated by averaging preScan and (if taken) postScan values.
-        :param path: str, path of the imported file
-        :param scan_triton_dict:  dict, scan parameters
-        :return: laser_freq, laser_freq_d
-        """
-        meas_taken = False
-        freq_list = []  # holds frequency track_wise
-        freq_err_list = []  # holds error of frequency track_wise
-        freqs_by_dev = []  # holds mean value of each comb for each track,
-        # each track will be dict: {'combkey': (mean_val, mean_err), ... }
-        # print(scan_triton_dict)
-        for track in scan_triton_dict:
-            freq_comb_data_tr = {}
-            # make sure there is indeed a pre during post scan measurement and not None
-            # if track is not None:
-            pre_scan_dict = track.get('preScan', {})
-            pre_scan_dict = {} if pre_scan_dict is None else pre_scan_dict
-            during_scan_dict = track.get('duringScan', {})
-            during_scan_dict = {} if during_scan_dict is None else during_scan_dict
-            post_scan_dict = track.get('postScan', {})
-            post_scan_dict = {} if post_scan_dict is None else post_scan_dict
-
-            for key, val_dict in pre_scan_dict.items():
-                if 'Comb' in key:
-                    freq_comb_data_tr[key] = []
-                    freq_comb_data_tr[key] = val_dict.get('laser_freq_mult', {}).get('data', [])
-
-            # now check during scan and append values to existing list or create new
-
-            for key, val_dict in during_scan_dict.items():
-                if 'Comb' in key:
-                    if not freq_comb_data_tr.get(key, {}):
-                        # no measurement was done pre scan for this comb, create empty dict.
-                        freq_comb_data_tr[key] = []
-                    # for col_a_col_key in ['aCol', 'col']:
-                    #     if not len(freq_comb_data_tr[key].get(col_a_col_key, [])):
-                    #         # the key was not existing yet, create or overwrite empty list
-                    #         freq_comb_data_tr[key][col_a_col_key] = []
-                    freq_comb_data_tr[key] += val_dict.get('laser_freq_mult', {}).get('data', [])
-
-                    # freq_comb_data_tr[key]['col'] = [x+203 for x in freq_comb_data_tr[key]['col']]# 203 MHz just due to AOM, REMOVE AFTERWARDS; NO PUSH!!
-                    # print("freq_comb_data_tr[key]['col']: ", freq_comb_data_tr[key]['col'])
-
-            # now check post scan and append values to existing list or create new
-
-            for key, val_dict in post_scan_dict.items():
-                if 'Comb' in key:
-                    if not freq_comb_data_tr.get(key, {}):
-                        # no measurement was done before for this comb, create empty dict.
-                        freq_comb_data_tr[key] = []
-                    # for col_a_col_key in ['aCol', 'col']:
-                    #     if not len(freq_comb_data_tr[key].get(col_a_col_key, [])):
-                    #         # the key was not existing yet, create or overwrite empty list
-                    #         freq_comb_data_tr[key][col_a_col_key] = []
-                    freq_comb_data_tr[key] += val_dict.get('laser_freq_mult', {}).get('data', [])
-                    # freq_comb_data_tr[key]['col'] += val_dict.get('comb_freq_col', {}).get('data', [])
-
-            # now take the mean value for this track:
-            combs_freq_mean_tr = {}  # list for the mean value of all combs that have a reading for this track
-            for comb_key, comb_a_col_col_dict in freq_comb_data_tr.items():
-                vals = [val for val in comb_a_col_col_dict if val > 0]
-                comb_mean = np.mean(vals)
-                comb_err = np.std(vals)
-                if not np.isnan(comb_mean):
-                    combs_freq_mean_tr[comb_key] = (comb_mean, comb_err)
-            freqs_by_dev.append(combs_freq_mean_tr)
-
-            # get the mean of all comb readings for this track:
-            if any(combs_freq_mean_tr):
-                means = []
-                err_means = []
-                for comb_key, read_tupl in combs_freq_mean_tr.items():
-                    means.append(read_tupl[0])
-                    err_means.append(read_tupl[1])
-                freq_list.append(np.mean(means))
-                freq_err_list.append(np.mean(err_means))
-                meas_taken = True
-            else:
-                freq_list.append(-1)  # append negative value to indicate there was no measurement in this track
-                freq_err_list.append(-1)
-
-        # create ONE mean value for whole file:
-        if meas_taken:
-            valid_freq_meas = []
-            valid_freq_meas_errs = []
-            for i, each in enumerate(freq_list):
-                if each > 0.0:
-                    valid_freq_meas.append(each)
-                    valid_freq_meas_errs.append(freq_err_list[i])
-            laser_freq = (np.mean(valid_freq_meas))  # in MHz
-            laser_freq_d = np.mean(valid_freq_meas_errs)  # in MHz
-            logging.debug('getting frequency from path: %s' % path)
-            (dir, file) = os.path.split(path)
-            (filename, end) = os.path.splitext(file)
-            logging.debug('Measured Frequencies in ' + str(file) + ' :')
-            for tr in freqs_by_dev:
-                for comb_key, read_tuple in sorted(tr.items()):
-                    logging.debug('%s : %.3f +/- %.3f MHz' % (comb_key, read_tupl[0] / 1000000, read_tupl[1] / 1000000))
-        else:
-            logging.info('no comb measurement detected, using laserfreq given from GUI')
-            laser_freq = self.laserFreq
-            laser_freq_d = self.laserFreq_d
-
-        return laser_freq, laser_freq_d
 
     def convert_date_to_mid_time(self):
         """

@@ -20,43 +20,43 @@ def load(file, db, raw=False, x_as_voltage=True, softw_gates=None):
     if e == '.txt':
         f = KepcoImporterTLD(file)
         if not raw:
-            f.preProc(db)
+            f.pre_process(db)
         return f
     
     elif e == '.tld':
         f = TLDImporter(file)
         if not raw:
-            f.preProc(db)
+            f.pre_process(db)
         return f
 
     elif e == '.sp':
         f = SimpleImporter(file)
         if not raw:
-            f.preProc(db)
+            f.pre_process(db)
         return f
 
     elif e == '.mcp':
         f = MCPImporter(file)
         if not raw:
-            f.preProc(db)
+            f.pre_process(db)
         return f
 
     elif e == '.xml':
         f = XMLImporter(file, x_as_voltage, softw_gates=softw_gates)
         if not raw:
-            f.preProc(db)
+            f.pre_process(db)
         return f
 
     elif e == '.dat':
         f = ALIVEImporter(file)
         if not raw:
-            f.preProc(db)
+            f.pre_process(db)
         return f
 
     elif e == '.bea':
-        f = BeaImporter(file,0,761360000,True)
+        f = BeaImporter(file, 0, 761360000, True)
         if not raw:
-            f.preProc(db)
+            f.pre_process(db)
         return f
     else:
         return None

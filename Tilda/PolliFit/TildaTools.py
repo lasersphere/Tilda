@@ -74,10 +74,11 @@ def select_from_db(db, vars_select, var_from, var_where=None, addCond='', caller
             con.close()
 
 
-def merge_dicts(d1, d2):
-    """ given two dicts, merge them into a new dict as a shallow copy """
-    new = d1.copy()
-    new.update(d2)
+def merge_dicts(*args):
+    """ Merge dicts into a new dict """
+    new = {}
+    for arg in args:
+        new.update(arg)
     return new
 
 
@@ -154,12 +155,13 @@ def deepupdate(target, src):
             target[k] = copy(v)
 
 
-def numpy_array_from_string(string, shape, datatytpe=np.int32):
+def numpy_array_from_string(string, shape, dtype=int):
     """
     converts a text array saved in an lxml.etree.Element
     using the function xmlWriteToTrack back into a numpy array
     :param string: str, array
     :param shape: int, or tuple of int, the shape of the output array
+    :param dtype: The numpy data type.
     :return: numpy array containing the desired values
     """
     string = string.replace('\\n', '').replace('[', '').replace(']', '').replace('  ', ' ')
@@ -173,7 +175,7 @@ def numpy_array_from_string(string, shape, datatytpe=np.int32):
         result['cts'] = from_string[3::4]
     else:
         string = string.replace('nan', '0')  # if nan in file
-        result = np.fromstring(string, dtype=datatytpe, sep=' ')
+        result = np.fromstring(string, dtype=dtype, sep=' ')
         result = result.reshape(shape)
         # the following function would be ideal,
         # but this yields errors even for the examples coming with the function
@@ -439,9 +441,9 @@ def xml_get_data_from_track(root_ele, n_of_track, data_type, data_shape, np_type
         return np.full(data_shape, default_val, dtype=np_type) if create_if_no_root_ele else None
     else:
         try:
-            actTrack = root_ele.find('tracks').find('track' + str(n_of_track)).find(direct_parent_ele_str)
-            dataText = actTrack.find(str(data_type)).text
-            data_numpy = numpy_array_from_string(dataText, data_shape, np_type)
+            act_track = root_ele.find('tracks').find('track' + str(n_of_track)).find(direct_parent_ele_str)
+            data_text = act_track.find(str(data_type)).text
+            data_numpy = numpy_array_from_string(data_text, data_shape, np_type)
             return data_numpy
         except Exception as e:
             if 'error' in data_type:
