@@ -513,7 +513,7 @@ class XMLImporter(SpecData):
         meta_dict = TildaTools.merge_dicts(*meta_dict)
         dev_ch, data_key = self.find_metadata_key(meta_dict, mtype)
         if dev_ch is not None:
-            return meta_dict[dev_ch][data_key]
+            return meta_dict[dev_ch].get(data_key, [])
         return []
 
     def get_metadata_measurement_track(self, scan_dict, track, mtype):
