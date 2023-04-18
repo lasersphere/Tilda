@@ -30,7 +30,7 @@ from Tilda.PolliFit.Tools import clip_val_with_unc
 from Tilda.PolliFit import PyQtGraphPlotter as Pg
 from Tilda.PolliFit.TildaTools import create_scan_dict_from_spec_data
 from Tilda.PolliFit.Measurement.XMLImporter import XMLImporter
-from Tilda.PolliFit.Models.Base import NPeak, Offset
+from Tilda.PolliFit.Models.Base import NPeak, Offset, Amplifier
 # noinspection PyUnresolvedReferences
 from Tilda.PolliFit.Models.Spectrum import Voigt, Lorentz, Gauss, fwhm_voigt, fwhm_voigt_d
 
@@ -188,7 +188,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         ''' fit related '''
 
         self.action_fit.triggered.connect(self.fit_spectrum)
-        self.fit_config = {'model': Offset(NPeak(Voigt())), 'min': -np.inf, 'max': np.inf}
+        self.fit_config: dict[str, any] = {'model': Offset(NPeak(Voigt())), 'min': -np.inf, 'max': np.inf}
 
         self.action_clear.triggered.connect(self.clear_fit)
 
@@ -210,7 +210,6 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
         for a in self.menu_lineshape.actions():
             a.triggered.connect(self.toggle_lineshape)
-        self.actionscans.triggered.connect(self.toggle_norm_menu)
         QtWidgets.QShortcut(QtGui.QKeySequence('Ctrl+L'), self, functools.partial(self.next_lineshape, True))
         QtWidgets.QShortcut(QtGui.QKeySequence('Ctrl+Shift+L'), self, functools.partial(self.next_lineshape, False))
         self.menu_lineshape.setTitle(self.menu_lineshape.title() + '\tCtrl+L  ')
@@ -286,6 +285,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
         ''' preset norm of all graphs '''
         self.scan_prog_array = None
+        self.norm_mode = '1'
         self.actionidentity.triggered.connect(self.toggle_norm_menu)
         self.actionscans.triggered.connect(self.toggle_norm_menu)
         QtWidgets.QShortcut(QtGui.QKeySequence('Ctrl+N'), self, functools.partial(self.next_norm, True))
@@ -622,10 +622,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         if self.spec_data is None:
             return
         if self.actionscans.isChecked():
-            self.spec_data.norm_mode = 'scans'
+            self.norm_mode = 'scans'
             self.update_all_plots(self.spec_data)
         else:
-            self.spec_data.norm_mode = '1'
+            self.norm_mode = '1'
             self.update_all_plots(self.spec_data)
         if self.cursor_xy_set:
             self.set_cursor_xy(*self.cursor_xy)
@@ -686,7 +686,6 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                                        self.calls_since_last_time_res_plot_update, max_calls_without_plot))
                     self.calls_since_last_time_res_plot_update += 1
 
-                self.update_spec_data_norm()
                 self.update_all_plots(self.spec_data, update_tres=update_time_res_spec)
                 if self.spec_data.seq_type in self.trs_names_list:
                     if not self.spinBox.hasFocus():
@@ -753,14 +752,11 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 spec_data = self.spec_data
             logging.debug('updating all plots with %s %s' % (str(spec_data), str(update_tres)))
             self.updating_plot = True
+            spec_data.norm_mode = self.norm_mode
             try:
                 self.update_sum_plot(spec_data)
             except SyntaxError:
                 logging.info('Your user function is invalid.')
-            if '0.11' in pg.__version__:
-                for num, track in enumerate(self.spec_data.cts):
-                    # np.nan seems to be making trouble with plotting for pyqtgraph version 0.11.x TODO: Remove at some point?
-                    self.spec_data.cts[num] = np.nan_to_num(track)
             if spec_data.seq_type in self.trs_names_list:
                 if update_tres:
                     self.update_tres_plot(spec_data)
@@ -1527,6 +1523,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
     @staticmethod
     def get_fwhm(model, popt, pcov):
+        if model.p.get('sigma', -1) == model.p.get('Gamma', -1) == -1:
+            return 0., 0.
         i = model.p.get('sigma', -1)
         sigma, sigma_d = 0., 0.
         if i != -1:
@@ -1618,21 +1616,24 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.cursor_xy_set = True
         self.cursor_xy = (x, y)
         model = self.fit_config['model']
-        spectrum = model.model.model
-        model.set_val(model.p['x0'], x)
-        model.gen_offset_masks(self.sum_x[mask])
-        model.guess_offset(self.sum_x[mask], self.sum_y[mask])
-        model.set_val(model.p['p0'], np.max(self.sum_y[mask]) - model.vals[model.p['off0e0']])
-        x_min, x_max = self.get_x_limits()
-        dx = 0.2 * (x_max - x_min)
-        if spectrum.type in {'Lorentz', 'Voigt'}:
-            model.set_val(model.p['Gamma'], dx)
-        if spectrum.type in {'Gauss', 'Voigt'}:
-            model.set_val(model.p['sigma'], dx / np.sqrt(8 * np.log(2)))
-            if spectrum.type == 'Voigt':
-                fwhm = spectrum.fwhm()
-                model.set_val(model.p['Gamma'], model.vals[model.p['Gamma']] * dx / fwhm)
-                model.set_val(model.p['sigma'], model.vals[model.p['sigma']] * dx / fwhm)
+        if model.type == 'Amplifier':
+            model.set_val(0, np.mean(self.sum_y[mask]))
+        else:
+            spectrum = model.model.model
+            model.set_val(model.p['x0'], x)
+            model.gen_offset_masks(self.sum_x[mask])
+            model.guess_offset(self.sum_x[mask], self.sum_y[mask])
+            model.set_val(model.p['p0'], np.max(self.sum_y[mask]) - model.vals[model.p['off0e0']])
+            x_min, x_max = self.get_x_limits()
+            dx = 0.2 * (x_max - x_min)
+            if spectrum.type in {'Lorentz', 'Voigt'}:
+                model.set_val(model.p['Gamma'], dx)
+            if spectrum.type in {'Gauss', 'Voigt'}:
+                model.set_val(model.p['sigma'], dx / np.sqrt(8 * np.log(2)))
+                if spectrum.type == 'Voigt':
+                    fwhm = spectrum.fwhm()
+                    model.set_val(model.p['Gamma'], model.vals[model.p['Gamma']] * dx / fwhm)
+                    model.set_val(model.p['sigma'], model.vals[model.p['sigma']] * dx / fwhm)
         self.update_cursor_data()
 
     def set_cursor(self, event):
@@ -1729,7 +1730,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.clear_fit()
 
     def set_lineshape(self, shape):
-        self.fit_config['model'] = Offset(NPeak(eval(shape)()))
+        if shape == 'Polynomial':
+            self.fit_config['model'] = Amplifier(order=1)
+        else:
+            self.fit_config['model'] = Offset(NPeak(eval(shape)()))
         if self.cursor_xy_set:
             self.set_cursor_xy(*self.cursor_xy)
         else:

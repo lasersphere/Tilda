@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'E:\Users\Patrick\Documents\Python Projects\Tilda\Tilda\Interface\LiveDataPlottingUi\Ui_LiveDataPlotting.ui'
 #
-# Created by: PyQt5 UI code generator 5.14.1
+# Created by: PyQt5 UI code generator 5.13.2
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -356,6 +356,9 @@ class Ui_MainWindow_LiveDataPlotting(object):
         self.action_set_limits = QtWidgets.QAction(MainWindow_LiveDataPlotting)
         self.action_set_limits.setCheckable(True)
         self.action_set_limits.setObjectName("action_set_limits")
+        self.actionPolynomial = QtWidgets.QAction(MainWindow_LiveDataPlotting)
+        self.actionPolynomial.setCheckable(True)
+        self.actionPolynomial.setObjectName("actionPolynomial")
         self.menunorm.addAction(self.actionidentity)
         self.menunorm.addAction(self.actionscans)
         self.menuView.addAction(self.action_update)
@@ -373,6 +376,7 @@ class Ui_MainWindow_LiveDataPlotting(object):
         self.menu_lineshape.addAction(self.action_lorentz)
         self.menu_lineshape.addAction(self.action_gauss)
         self.menu_lineshape.addAction(self.action_voigt)
+        self.menu_lineshape.addAction(self.actionPolynomial)
         self.menufit.addAction(self.action_fit)
         self.menufit.addAction(self.action_clear)
         self.menufit.addAction(self.action_fit_auto)
@@ -472,3 +476,4 @@ class Ui_MainWindow_LiveDataPlotting(object):
         self.action_clear.setShortcut(_translate("MainWindow_LiveDataPlotting", "Ctrl+Shift+F"))
         self.action_set_limits.setText(_translate("MainWindow_LiveDataPlotting", "set x-limits"))
         self.action_set_limits.setShortcut(_translate("MainWindow_LiveDataPlotting", "Ctrl+H"))
+        self.actionPolynomial.setText(_translate("MainWindow_LiveDataPlotting", "Polynomial"))

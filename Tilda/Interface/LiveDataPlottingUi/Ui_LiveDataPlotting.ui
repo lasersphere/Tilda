@@ -537,6 +537,7 @@ p, li { white-space: pre-wrap; }
      <addaction name="action_lorentz"/>
      <addaction name="action_gauss"/>
      <addaction name="action_voigt"/>
+     <addaction name="actionPolynomial"/>
     </widget>
     <widget class="QMenu" name="menu_track">
      <property name="title">
@@ -754,6 +755,14 @@ p, li { white-space: pre-wrap; }
    </property>
    <property name="shortcut">
     <string>Ctrl+H</string>
+   </property>
+  </action>
+  <action name="actionPolynomial">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Polynomial</string>
    </property>
   </action>
  </widget>
