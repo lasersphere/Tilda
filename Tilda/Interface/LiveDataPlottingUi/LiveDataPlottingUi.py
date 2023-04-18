@@ -1535,6 +1535,16 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             gamma, gamma_d = popt[i], pcov[i, i]
         return fwhm_voigt(gamma, sigma), fwhm_voigt_d(gamma, gamma_d, sigma, sigma_d)
 
+    def get_chi2(self, model, popt):
+        mask = self.get_mask_limits()
+        if not np.any(mask):
+            return
+        x, y, y_err = self.sum_x[mask], self.sum_y[mask], self.sum_err[mask]
+        residuals = model(x, *popt) - y
+        chi2 = np.sum(residuals ** 2 / y_err ** 2)
+        chi2 /= y.size - popt.size
+        return chi2
+
     # @staticmethod
     # def get_freq_results(model, popt, pcov):
     #     iso = Cfg._main_instance.main.scan_pars['iso']
@@ -1561,11 +1571,12 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.fit_data_item.setData(x, model(x, *popt))
         self.fit_data_item.setOpacity(1)
 
-        digits = int(np.floor(np.log10(np.abs(model.size + 1)))) + 1
-        text = 'Fit results (V):\n{}\n{}\n\n'.format(
+        digits = int(np.floor(np.log10(np.abs(model.size + 2)))) + 1
+        text = 'Fit results (V):\n{}\n{}\n{}\n\n'.format(
             '\n'.join(['{}:   {} = {} +/- {}'.format(str(i).zfill(digits), name, *clip_val_with_unc(val, err))
                        for i, (name, val, err) in enumerate(zip(model.names, popt, np.sqrt(np.diag(pcov))))]),
-            '{}:   FWHM = {} +/- {}'.format(model.size, *clip_val_with_unc(*self.get_fwhm(model, popt, pcov))))
+            '{}:   FWHM = {} +/- {}'.format(model.size, *clip_val_with_unc(*self.get_fwhm(model, popt, pcov))),
+            '{}:   red. chi2 = {}'.format(model.size, clip_val_with_unc(self.get_chi2(model, popt), 0.1)[0]))
 
         # pt, pc = self.get_freq_results(model, popt, pcov)
         # text += 'Fit results (MHz):\n{}\n{}'.format(
