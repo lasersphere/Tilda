@@ -198,7 +198,7 @@ def get_data_explanation_str(scan_dict, datatype):
         data_explanation = 'kepco scan data. ' \
                            ' List of Lists, each list holds the readings of one' \
                            ' multimeter as listed in measureVoltPars.' \
-                           'Dimensions are: (len(activePmtList), nOfSteps), datatype: np.float'
+                           'Dimensions are: (len(activePmtList), nOfSteps), datatype: float'
     return data_explanation
 
 
