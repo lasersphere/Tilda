@@ -537,7 +537,8 @@ p, li { white-space: pre-wrap; }
      <addaction name="action_lorentz"/>
      <addaction name="action_gauss"/>
      <addaction name="action_voigt"/>
-     <addaction name="actionPolynomial"/>
+     <addaction name="action_constant"/>
+     <addaction name="action_linear"/>
     </widget>
     <widget class="QMenu" name="menu_track">
      <property name="title">
@@ -757,12 +758,25 @@ p, li { white-space: pre-wrap; }
     <string>Ctrl+H</string>
    </property>
   </action>
-  <action name="actionPolynomial">
+  <action name="actionorder">
+   <property name="text">
+    <string>order</string>
+   </property>
+  </action>
+  <action name="action_constant">
    <property name="checkable">
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Polynomial</string>
+    <string>Constant</string>
+   </property>
+  </action>
+  <action name="action_linear">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Linear</string>
    </property>
   </action>
  </widget>

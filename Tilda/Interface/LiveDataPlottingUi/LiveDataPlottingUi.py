@@ -18,7 +18,6 @@ import sqlite3
 from datetime import datetime, timedelta
 import numpy as np
 from PyQt5 import QtWidgets, QtCore, QtGui
-import pyqtgraph as pg
 
 import Tilda.Application.Config as Cfg
 from Tilda.Interface.LiveDataPlottingUi.PreDurPostMeasUi import PrePostTabWidget
@@ -1576,7 +1575,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             '\n'.join(['{}:   {} = {} +/- {}'.format(str(i).zfill(digits), name, *clip_val_with_unc(val, err))
                        for i, (name, val, err) in enumerate(zip(model.names, popt, np.sqrt(np.diag(pcov))))]),
             '{}:   FWHM = {} +/- {}'.format(model.size, *clip_val_with_unc(*self.get_fwhm(model, popt, pcov))),
-            '{}:   red. chi2 = {}'.format(model.size, clip_val_with_unc(self.get_chi2(model, popt), 0.1)[0]))
+            '{}:   red. chi2 = {}'.format(model.size + 1, clip_val_with_unc(self.get_chi2(model, popt), 0.1)[0]))
 
         # pt, pc = self.get_freq_results(model, popt, pcov)
         # text += 'Fit results (MHz):\n{}\n{}'.format(
@@ -1741,7 +1740,9 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.clear_fit()
 
     def set_lineshape(self, shape):
-        if shape == 'Polynomial':
+        if shape == 'Constant':
+            self.fit_config['model'] = Amplifier(order=0)
+        elif shape == 'Linear':
             self.fit_config['model'] = Amplifier(order=1)
         else:
             self.fit_config['model'] = Offset(NPeak(eval(shape)()))
