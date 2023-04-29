@@ -3,9 +3,21 @@ SCAN:
   show_scan_finished: True
 
 FREQUENCY:
-  arithmetic: 2 * Matisse1
+  arithmetic: 2 * Matisse
   freq_dict:
-    Matisse1: 374740570
+    Matisse: 381347608.0
+
+VOLTAGE:
+  arithmetic: AccVolt
+  volt_dict:
+    AccVolt: 20000.0
+
+DOPPLER:
+  mass: 39.962591
+  charge: 1
+  amplifier_slope: 50.0
+  amplifier_offset: 0.0
+  col: True
 
 SOUND:
   is_on: True

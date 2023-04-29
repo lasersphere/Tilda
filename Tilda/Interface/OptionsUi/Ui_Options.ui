@@ -244,6 +244,22 @@
         </widget>
        </item>
        <item>
+        <widget class="QGroupBox" name="groupBox_standardDopplerConfig">
+         <property name="title">
+          <string>STANDARD DOPPLER CONFIG</string>
+         </property>
+         <layout class="QHBoxLayout" name="horizontalLayout">
+          <item>
+           <widget class="QPushButton" name="b_doppler_config">
+            <property name="text">
+             <string>Doppler Config ...</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
         <spacer name="verticalSpacer">
          <property name="orientation">
           <enum>Qt::Vertical</enum>

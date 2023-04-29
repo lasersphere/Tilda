@@ -20,10 +20,11 @@ from PyQt5.QtCore import Qt
 
 import Tilda.Application.Config as Cfg
 import Tilda.PolliFit.MPLPlotter as MPLPlotter
+from Tilda.PolliFit.Physics import wavenumber, wavelenFromFreq
 from Tilda.PolliFit.Gui.MainUi import MainUi as PolliMainUi
 from Tilda.Interface.DialogsUi.ScanCompleteDialUi import ScanCompleteDialUi
 from Tilda.Interface.DmmUi.DmmUi import DmmLiveViewUi
-from Tilda.Interface.FrequencyUi.FreqUi import FreqUi
+from Tilda.Interface.ArithmeticsUi.ArithmeticsUi import ArithmeticsUi
 from Tilda.Interface.LiveDataPlottingUi.LiveDataPlottingUi import TRSLivePlotWindowUi
 from Tilda.Interface.MainUi.Ui_Main import Ui_TildaMainWindow
 from Tilda.Interface.OptionsUi.OptionsUi import OptionsUi
@@ -55,6 +56,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.scan_progress_win = None
         self.job_stacker_win = None
         self.freq_win = None
+        self.volt_win = None
         self.simple_counter_gui = None
         self.dmm_live_view_win = None
         self.live_plot_win = None  # one active live plot window for displaying results from pipeline
@@ -79,7 +81,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.actionoptions.triggered.connect(self.open_options_win)
         # self.actionSet_Laser_Frequency.triggered.connect(self.set_laser_freq)   # old version of frequency settings
         self.actionSet_Laser_Frequency.triggered.connect(self.open_freq_win)
-        self.actionSet_acceleration_voltage.triggered.connect(self.set_acc_volt)
+        self.actionSet_acceleration_voltage.triggered.connect(self.open_volt_win)
         self.actionLoad_spectra.triggered.connect(self.load_spectra)
         self.actionDigital_Multimeters.triggered.connect(self.open_dmm_live_view_win)
         self.actionPolliFit.triggered.connect(self.open_pollifit_win)
@@ -113,21 +115,19 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.choose_working_dir()
 
     def laser_freq_dbl_click(self, event):
-        #self.set_laser_freq()   # old version
         self.open_freq_win()
 
     def acc_volt_dbl_click(self, event):
-        self.set_acc_volt()
+        self.open_volt_win()
 
     def dmm_setup_dbl_click(self, event):
         self.open_dmm_live_view_win()
 
     def triton_dbl_click(self, event):
         dial = QtWidgets.QMessageBox(self)
-        ret = QtWidgets.QMessageBox.question(dial,
-                                             'Triton Unsubscribe','Do you want to unsubscribe from all triton devs?'
-                                             )
-        if ret==QtWidgets.QMessageBox.Yes:
+        ret = QtWidgets.QMessageBox.question(
+            dial, 'Triton Unsubscribe', 'Do you want to unsubscribe from all triton devs?')
+        if ret == QtWidgets.QMessageBox.Yes:
             Cfg._main_instance.triton_unsubscribe_all()
 
     def subscribe_to_main(self):
@@ -223,28 +223,9 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         start_path = os.path.expanduser('~')
         if Cfg._main_instance.working_directory:
             start_path = os.path.split(Cfg._main_instance.working_directory)[0]
-        workdir = QtWidgets.QFileDialog.getExistingDirectory(QtWidgets.QFileDialog(),
-            'choose working directory', start_path)
+        workdir = QtWidgets.QFileDialog.getExistingDirectory(
+            QtWidgets.QFileDialog(), 'choose working directory', start_path)
         return Cfg._main_instance.work_dir_changed(workdir)
-
-
-    # def set_laser_freq(self):
-    #     """
-    #     not needed anymore, replaced by open freq win
-    #     :return:
-    #     """
-    #     laser_freq, ok = QtWidgets.QInputDialog.getDouble(self, 'Laser', 'laser wavenumber [cm-1]',
-    #                                                       0, 0, 9999999,
-    #                                                       5)
-    #     if ok:
-    #         Cfg._main_instance.laser_freq_changed(laser_freq)
-
-    def set_acc_volt(self):
-        acc_volt, ok = QtWidgets.QInputDialog.getDouble(self, 'Acceleration Voltage', 'acceleration voltage [V]',
-                                                          0, 0, 9999999,
-                                                          2)
-        if ok:
-            Cfg._main_instance.acc_volt_changed(acc_volt)
 
     def load_spectra(self, file=None, loaded_spec=None, sum_sc_tr=None):
         if Cfg._main_instance.working_directory is None:
@@ -324,9 +305,22 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
     def open_freq_win(self):
         if self.freq_win is None:
-            self.freq_win = FreqUi(self)
+            freq_dict, freq_arith = Cfg._main_instance.local_options.get_freq_settings()
+            preview = {'functions': [None, wavenumber, wavelenFromFreq],
+                       'units': ['MHz', 'cm-1', 'nm'], 'decimals': [0, 2, 5]}
+            self.freq_win = ArithmeticsUi(self, freq_dict, freq_arith, close_func=self.close_freq_win,
+                                          obs_name='Laser Frequency', preview=preview)
         else:
             self.raise_win_to_front(self.freq_win)
+
+    def open_volt_win(self):
+        if self.volt_win is None:
+            volt_dict, volt_arith = Cfg._main_instance.local_options.get_volt_settings()
+            preview = {'functions': [None], 'units': ['V'], 'decimals': [3]}
+            self.volt_win = ArithmeticsUi(self, volt_dict, volt_arith, close_func=self.close_volt_win,
+                                          obs_name='Acceleration Voltage', preview=preview)
+        else:
+            self.raise_win_to_front(self.volt_win)
 
     def open_live_plot_win(self):
         if self.live_plot_win is None:
@@ -402,7 +396,8 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
     def raise_win_to_front(self, window):
         # this will remove minimized status
         # and restore window with keeping maximized/normal state
-        window.setWindowState(window.windowState() & ~QtCore.Qt.WindowMinimized | QtCore.Qt.WindowActive)
+        window.setWindowState(
+            window.windowState() & ~QtCore.Qt.WindowState.WindowMinimized | QtCore.Qt.WindowState.WindowActive)
 
         # this will activate the window
         window.activateWindow()
@@ -412,9 +407,20 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.act_scan_wins.remove(win_ref)
 
     def close_freq_win(self):
-        new_laser_freq = Cfg._main_instance.calc_freq()
-        Cfg._main_instance.laser_freq_changed(new_laser_freq)
+        if self.freq_win.val_accepted:
+            Cfg._main_instance.local_options.set_freq(self.freq_win.obs_dict, self.freq_win.obs_arith)
+            Cfg._main_instance.save_options()  # save to local options file
+            new_laser_freq = Cfg._main_instance.calc_freq()
+            Cfg._main_instance.laser_freq_changed(new_laser_freq)
         self.freq_win = None
+
+    def close_volt_win(self):
+        if self.volt_win.val_accepted:
+            Cfg._main_instance.local_options.set_volt(self.volt_win.obs_dict, self.volt_win.obs_arith)
+            Cfg._main_instance.save_options()  # save to local options file
+            new_acc_volt = Cfg._main_instance.calc_volt()
+            Cfg._main_instance.acc_volt_changed(new_acc_volt)
+        self.volt_win = None
 
     def close_job_stacker_win(self):
         self.job_stacker_win = None
@@ -482,6 +488,11 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
                 self.freq_win.close()
         except Exception as e:
             logging.error('error while closing frequency win:' + str(e))
+        try:
+            if self.volt_win is not None:
+                self.volt_win.close()
+        except Exception as e:
+            logging.error('error while closing acceleration voltage win:' + str(e))
         try:
             if self.job_stacker_win is not None:
                 self.job_stacker_win.close()

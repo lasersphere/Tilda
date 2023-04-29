@@ -9,7 +9,6 @@ Created on '30.09.2015'
 import ast
 import logging
 import os
-import sys
 import gc
 from copy import deepcopy
 from datetime import datetime, timedelta
@@ -32,6 +31,7 @@ from Tilda.Service.SimpleCounter.SimpleCounter import SimpleCounterControl
 
 from Tilda.PolliFit.Measurement.XMLImporter import XMLImporter
 from Tilda.PolliFit import TildaTools
+from Tilda.PolliFit.Physics import wavenumber
 
 
 class Main(QtCore.QObject):
@@ -445,7 +445,7 @@ class Main(QtCore.QObject):
         self.local_options.load_from_file(default=reset_to_default)
         # TODO: change variables in main that are linked to options! For example the following:
         self.laserfreq = self.calc_freq()  # laser frequency in cm-1
-        # self.acc_voltage = 0  # acceleration voltage of the source in volts
+        self.acc_voltage = self.calc_volt()  # acceleration voltage of the source in volts
         # self.main_ui_status_call_back_signal_timedelta_between_emits = timedelta(milliseconds=500)
         self.pre_scan_timeout_changed(self.get_option('SCAN:pre_scan_timeout'))
         # self.sql_set_interval(self.get_option('SQL:interval_s'))
@@ -463,9 +463,16 @@ class Main(QtCore.QObject):
     def calc_freq(self):
         """
         calculates the frequency from options.ini
-        :return: total frequency for spectroscopy
+        :return: total frequency for spectroscopy in cm-1
         """
-        return self.local_options.get_abs_freq()
+        return wavenumber(self.local_options.get_abs_freq())
+
+    def calc_volt(self):
+        """
+        calculates the acceleration voltage from options.ini
+        :return: total acceleration voltage for spectroscopy
+        """
+        return self.local_options.get_volt()
 
     def get_option(self, option_to_get):
         """
@@ -540,6 +547,7 @@ class Main(QtCore.QObject):
         """
         self.acc_voltage = acc_volt
         self.autostart_dict['accVolt'] = acc_volt
+        logging.info('Acceleration voltage was set to: {} V'.format(acc_volt))
         FileHandle.write_to_auto_start_xml_file(self.autostart_dict)
         self.send_state()
 

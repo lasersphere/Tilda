@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'E:\Users\Patrick\Documents\Python Projects\Tilda\Tilda\Interface\OptionsUi\Ui_Options.ui'
 #
-# Created by: PyQt5 UI code generator 5.13.2
+# Created by: PyQt5 UI code generator 5.14.1
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -112,6 +112,14 @@ class Ui_Dialog_Options(object):
         self.pushButton_chooseSoundsFolder.setObjectName("pushButton_chooseSoundsFolder")
         self.verticalLayout_3.addWidget(self.pushButton_chooseSoundsFolder)
         self.verticalLayout_2.addWidget(self.groupBox_scanFinished)
+        self.groupBox_standardDopplerConfig = QtWidgets.QGroupBox(self.tab_generalSettings)
+        self.groupBox_standardDopplerConfig.setObjectName("groupBox_standardDopplerConfig")
+        self.horizontalLayout = QtWidgets.QHBoxLayout(self.groupBox_standardDopplerConfig)
+        self.horizontalLayout.setObjectName("horizontalLayout")
+        self.b_doppler_config = QtWidgets.QPushButton(self.groupBox_standardDopplerConfig)
+        self.b_doppler_config.setObjectName("b_doppler_config")
+        self.horizontalLayout.addWidget(self.b_doppler_config)
+        self.verticalLayout_2.addWidget(self.groupBox_standardDopplerConfig)
         spacerItem2 = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         self.verticalLayout_2.addItem(spacerItem2)
         self.tabWidget.addTab(self.tab_generalSettings, "")
@@ -150,4 +158,6 @@ class Ui_Dialog_Options(object):
         self.link_openSoundsFolder.setText(_translate("Dialog_Options", "...\\Interface\\Sounds"))
         self.link_openSoundsFolder.setDescription(_translate("Dialog_Options", "Go to Folder to add or remove sounds from the random rotation."))
         self.pushButton_chooseSoundsFolder.setText(_translate("Dialog_Options", "Choose Sounds Folder"))
+        self.groupBox_standardDopplerConfig.setTitle(_translate("Dialog_Options", "STANDARD DOPPLER CONFIG"))
+        self.b_doppler_config.setText(_translate("Dialog_Options", "Doppler Config ..."))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_generalSettings), _translate("Dialog_Options", "General"))

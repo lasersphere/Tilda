@@ -8,6 +8,7 @@ The data is analysed by a designated pipeline and then the data is emitted vie p
 Here it is only displayed. Gating etc. is done by the pipelines.
 
 """
+
 import ast
 import os
 import functools
@@ -22,9 +23,9 @@ from PyQt5 import QtWidgets, QtCore, QtGui
 import Tilda.Application.Config as Cfg
 from Tilda.Interface.LiveDataPlottingUi.PreDurPostMeasUi import PrePostTabWidget
 from Tilda.Interface.LiveDataPlottingUi.Ui_LiveDataPlotting import Ui_MainWindow_LiveDataPlotting
-from Tilda.Interface.LiveDataPlottingUi.DopplerConfigUi import DopplerConfigUi
+from Tilda.Interface.DopplerConfigUi.DopplerConfigUi import DopplerConfigUi, setup_doppler_config, calc_arith
 from Tilda.Interface.ScanProgressUi.ScanProgressUi import ScanProgressUi
-from Tilda.PolliFit.Physics import freqFromWavenumber, volt_to_rel_freq
+from Tilda.PolliFit.Physics import volt_to_rel_freq
 from Tilda.PolliFit.FitRoutines import curve_fit
 from Tilda.PolliFit.Tools import clip_val_with_unc
 from Tilda.PolliFit import PyQtGraphPlotter as Pg
@@ -1018,7 +1019,6 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.comboBox_select_sum_for_pmts.setCurrentIndex(index)
 
     def get_functions(self):
-        func_dict = Cfg._main_instance.get_option('FUNCTIONS')
         func_dict = Cfg._main_instance.local_options.get_functions()
         func_list = []
         for key, value in func_dict.items():
@@ -1551,10 +1551,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         doppler_config = self.fit_config['doppler']
         m = doppler_config['mass']
         q = doppler_config['charge']
-        f = doppler_config['laser_frequency'] * doppler_config['freq_mult']
+        f = calc_arith(doppler_config['freq_dict'], doppler_config['freq_arith'])
         col = doppler_config['col']
-        u = doppler_config['voltage'] * doppler_config['divider_ratio']
-        a, b = doppler_config['offset'],  doppler_config['slope']
+        u = calc_arith(doppler_config['volt_dict'], doppler_config['volt_arith'])
+        a, b = doppler_config['amplifier_offset'],  doppler_config['amplifier_slope']
         pt, pc = popt.copy(), pcov.copy()
         i_x0 = model.p.get('x0', -1)
         if i_x0 == -1:
@@ -1719,36 +1719,30 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     def toggle_fit_auto(self):
         pass
 
-    def setup_doppler_config(self):
-        con = sqlite3.connect(Cfg._main_instance.database)
-        cur = con.cursor()
-        cur.execute('SELECT mass FROM Isotopes WHERE iso = {}'.format(Cfg._main_instance.scan_pars.get('iso', 'NULL')))
-        data = cur.fetchall()
-        mass = data[0][0] if data else 40.
-        doppler_config = dict(
-            mass=mass,
-            charge=1,
-            col=True,
-            laser_frequency=freqFromWavenumber(Cfg._main_instance.laserfreq),
-            freq_mult=1.,
-            voltage=Cfg._main_instance.acc_voltage,
-            divider_ratio=1.,
-            slope=50.,
-            offset=0.
-        )
-        con.close()
+    @staticmethod
+    def setup_doppler_config():
+        doppler_config = setup_doppler_config()
+        try:
+            con = sqlite3.connect(Cfg._main_instance.database)
+            cur = con.cursor()
+            cur.execute('SELECT mass FROM Isotopes WHERE iso = {}'
+                        .format(Cfg._main_instance.scan_pars.get('iso', 'NULL')))
+            data = cur.fetchall()
+            if data:
+                doppler_config['mass'] = data[0][0]
+        except Exception as e:
+            logging.warning('Error while reading database:\n{}'.format(repr(e)))
         return doppler_config
+
+    def open_doppler_config(self):
+        self.doppler_config_ui = DopplerConfigUi(self, self.fit_config['doppler'])
+        self.doppler_config_ui.close_signal.connect(self.set_and_close_doppler_config)
 
     def set_and_close_doppler_config(self):
         if self.doppler_config_ui is None:
             return
         self.fit_config['doppler'] = {k: v for k, v in self.doppler_config_ui.doppler_config.items()}
         self.doppler_config_ui = None
-
-    def open_doppler_config(self):
-        self.doppler_config_ui = DopplerConfigUi(self.fit_config['doppler'])
-        self.doppler_config_ui.close_signal.connect(self.set_and_close_doppler_config)
-        self.doppler_config_ui.show()
 
     def next_track(self, _next):
         actions = self.menu_track.actions() if _next else self.menu_track.actions()[::-1]

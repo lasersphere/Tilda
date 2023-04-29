@@ -15,6 +15,7 @@ from PyQt5 import QtWidgets
 
 import Tilda.Application.Config as Cfg
 from Tilda.Interface.OptionsUi.Ui_Options import Ui_Dialog_Options
+from Tilda.Interface.DopplerConfigUi.DopplerConfigUi import DopplerConfigUi
 
 
 class OptionsUi(QtWidgets.QDialog, Ui_Dialog_Options):
@@ -25,6 +26,8 @@ class OptionsUi(QtWidgets.QDialog, Ui_Dialog_Options):
         self.main_gui = main_gui
         self.main = Cfg._main_instance
         self.setupUi(self)
+        self.doppler_win = None
+        self.doppler_config = None
 
         ''' Option functionality '''
         self.setup_all_options()
@@ -71,6 +74,8 @@ class OptionsUi(QtWidgets.QDialog, Ui_Dialog_Options):
             self.create_folder_str(self.get_setting_from_options('SOUND:folder')))
         self.pushButton_chooseSoundsFolder.clicked.connect(
             lambda: self.choose_folder(self.pushButton_chooseSoundsFolder, 'SOUND:folder'))
+        # STANDARD DOPPLER CONFIG WIN
+        self.b_doppler_config.clicked.connect(self.open_doppler_config)
 
     ''' general '''
 
@@ -179,6 +184,16 @@ class OptionsUi(QtWidgets.QDialog, Ui_Dialog_Options):
                 subprocess.Popen(["xdg-open", path_to])
         else:
             logging.info('Path {} does not exist. Can not open'.format(path_to))
+
+    def open_doppler_config(self):
+        self.doppler_win = DopplerConfigUi(self, self.doppler_config)
+        self.doppler_win.close_signal.connect(self.close_doppler_config)
+
+    def close_doppler_config(self):
+        for key in list(self.main.local_options.get_doppler_settings().keys()):
+            self.main.set_option(f'DOPPLER:{key}', self.doppler_win.doppler_config[key])
+        self.doppler_config = self.doppler_win.doppler_config
+        self.doppler_win = None
 
     ''' window related '''
 

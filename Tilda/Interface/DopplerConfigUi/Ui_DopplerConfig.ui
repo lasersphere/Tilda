@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>517</width>
-    <height>252</height>
+    <width>450</width>
+    <height>200</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -23,41 +23,12 @@
    </size>
   </property>
   <property name="windowTitle">
-   <string>Time-Resolved Spectra Configuration</string>
+   <string>Doppler Config</string>
   </property>
   <property name="locale">
    <locale language="English" country="Europe"/>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
-   <item>
-    <widget class="QLabel" name="l_info">
-     <property name="font">
-      <font>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Doppler config</string>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <spacer name="vspace_header">
-     <property name="orientation">
-      <enum>Qt::Vertical</enum>
-     </property>
-     <property name="sizeType">
-      <enum>QSizePolicy::Fixed</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>20</width>
-       <height>6</height>
-      </size>
-     </property>
-    </spacer>
-   </item>
    <item>
     <layout class="QHBoxLayout" name="hor_mass">
      <item>
@@ -74,7 +45,7 @@
       </widget>
      </item>
      <item>
-      <spacer name="horizontalSpacer">
+      <spacer name="hspace_mass">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
        </property>
@@ -88,6 +59,24 @@
      </item>
      <item>
       <widget class="QDoubleSpinBox" name="d_mass">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>100</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>100</width>
+         <height>16777215</height>
+        </size>
+       </property>
        <property name="correctionMode">
         <enum>QAbstractSpinBox::CorrectToNearestValue</enum>
        </property>
@@ -101,7 +90,7 @@
         <double>1.000000000000000</double>
        </property>
        <property name="maximum">
-        <double>999999.000000000000000</double>
+        <double>1000.000000000000000</double>
        </property>
        <property name="value">
         <double>40.000000000000000</double>
@@ -126,7 +115,7 @@
       </widget>
      </item>
      <item>
-      <spacer name="horizontalSpacer_2">
+      <spacer name="hspace_charge">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
        </property>
@@ -140,6 +129,24 @@
      </item>
      <item>
       <widget class="QSpinBox" name="s_charge">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>100</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>100</width>
+         <height>16777215</height>
+        </size>
+       </property>
        <property name="correctionMode">
         <enum>QAbstractSpinBox::CorrectToNearestValue</enum>
        </property>
@@ -157,7 +164,7 @@
     </layout>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="hor_laser_frequency">
+    <layout class="QHBoxLayout" name="hor_laser_frequency" stretch="0,1,0,0,0">
      <item>
       <widget class="QLabel" name="label_laser_frequency">
        <property name="sizePolicy">
@@ -172,7 +179,7 @@
       </widget>
      </item>
      <item>
-      <spacer name="horizontalSpacer_3">
+      <spacer name="hspace_laser_frequency">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
        </property>
@@ -186,6 +193,24 @@
      </item>
      <item>
       <widget class="QCheckBox" name="check_col">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>40</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>50</width>
+         <height>16777215</height>
+        </size>
+       </property>
        <property name="text">
         <string>col</string>
        </property>
@@ -196,6 +221,27 @@
      </item>
      <item>
       <widget class="QDoubleSpinBox" name="d_laser_frequency">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>116</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>116</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
        <property name="buttonSymbols">
         <enum>QAbstractSpinBox::NoButtons</enum>
        </property>
@@ -209,47 +255,45 @@
         <number>1</number>
        </property>
        <property name="minimum">
-        <double>1000000.000000000000000</double>
+        <double>0.000000000000000</double>
        </property>
        <property name="maximum">
         <double>10000000000.000000000000000</double>
        </property>
        <property name="value">
-        <double>500000000.000000000000000</double>
+        <double>1.000000000000000</double>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QLabel" name="label_times_freq">
-       <property name="text">
-        <string>&lt;nobr&gt;&amp;times;&lt;/nobr&gt;</string>
+      <widget class="QPushButton" name="b_config_frequency">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
        </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QLineEdit" name="line_freq_mult">
+       <property name="minimumSize">
+        <size>
+         <width>100</width>
+         <height>0</height>
+        </size>
+       </property>
        <property name="maximumSize">
         <size>
-         <width>50</width>
+         <width>100</width>
          <height>16777215</height>
         </size>
        </property>
        <property name="text">
-        <string>1.0</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QCheckBox" name="check_median_freq">
-       <property name="text">
-        <string>median from data</string>
+        <string>config ...</string>
        </property>
       </widget>
      </item>
     </layout>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="hor_voltage">
+    <layout class="QHBoxLayout" name="hor_voltage" stretch="0,1,0,0">
      <item>
       <widget class="QLabel" name="label_voltage">
        <property name="sizePolicy">
@@ -264,7 +308,7 @@
       </widget>
      </item>
      <item>
-      <spacer name="horizontalSpacer_4">
+      <spacer name="hspace_voltage">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
        </property>
@@ -278,6 +322,27 @@
      </item>
      <item>
       <widget class="QDoubleSpinBox" name="d_voltage">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>116</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>116</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
        <property name="buttonSymbols">
         <enum>QAbstractSpinBox::NoButtons</enum>
        </property>
@@ -299,32 +364,27 @@
       </widget>
      </item>
      <item>
-      <widget class="QLabel" name="label">
+      <widget class="QPushButton" name="b_config_voltage">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>100</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>100</width>
+         <height>16777215</height>
+        </size>
+       </property>
        <property name="text">
-        <string>&lt;nobr&gt;&amp;times;&lt;/nobr&gt;</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QDoubleSpinBox" name="d_divider_ratio">
-       <property name="buttonSymbols">
-        <enum>QAbstractSpinBox::NoButtons</enum>
-       </property>
-       <property name="correctionMode">
-        <enum>QAbstractSpinBox::CorrectToNearestValue</enum>
-       </property>
-       <property name="minimum">
-        <double>1.000000000000000</double>
-       </property>
-       <property name="maximum">
-        <double>1000000.000000000000000</double>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QCheckBox" name="checkBox">
-       <property name="text">
-        <string>median from data</string>
+        <string>config ...</string>
        </property>
       </widget>
      </item>
@@ -346,7 +406,7 @@
       </widget>
      </item>
      <item>
-      <spacer name="horizontalSpacer_5">
+      <spacer name="hspace_amplifier">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
        </property>
@@ -360,6 +420,24 @@
      </item>
      <item>
       <widget class="QDoubleSpinBox" name="d_slope">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>64</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>64</width>
+         <height>16777215</height>
+        </size>
+       </property>
        <property name="buttonSymbols">
         <enum>QAbstractSpinBox::NoButtons</enum>
        </property>
@@ -373,7 +451,7 @@
         <double>1.000000000000000</double>
        </property>
        <property name="maximum">
-        <double>99999.000000000000000</double>
+        <double>100000.000000000000000</double>
        </property>
        <property name="value">
         <double>50.000000000000000</double>
@@ -382,6 +460,24 @@
      </item>
      <item>
       <widget class="QLabel" name="label_times_amp">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>20</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>20</width>
+         <height>16777215</height>
+        </size>
+       </property>
        <property name="text">
         <string>&lt;nobr&gt;&amp;times; &lt;i&gt;U&lt;/i&gt;&lt;/nobr&gt;</string>
        </property>
@@ -392,10 +488,22 @@
      </item>
      <item>
       <widget class="QLabel" name="label_plus">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="minimumSize">
         <size>
-         <width>30</width>
+         <width>20</width>
          <height>0</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>20</width>
+         <height>16777215</height>
         </size>
        </property>
        <property name="text">
@@ -408,6 +516,24 @@
      </item>
      <item>
       <widget class="QDoubleSpinBox" name="d_offset">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>100</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>100</width>
+         <height>16777215</height>
+        </size>
+       </property>
        <property name="buttonSymbols">
         <enum>QAbstractSpinBox::NoButtons</enum>
        </property>
@@ -416,6 +542,12 @@
        </property>
        <property name="suffix">
         <string> V</string>
+       </property>
+       <property name="decimals">
+        <number>3</number>
+       </property>
+       <property name="maximum">
+        <double>100000.000000000000000</double>
        </property>
       </widget>
      </item>

@@ -13,7 +13,6 @@ Main.py also offers some often used wrapper functions (save, load,...)
 import os
 import yaml
 import logging
-from Tilda.PolliFit import Physics
 
 
 class Options:
@@ -34,16 +33,18 @@ class Options:
         Read option.yaml and save them to the options object.
         If no options.yaml exists create one with the standard values defined in options_default.yaml
         """
+        self.config_dict = yaml.safe_load(open(self.default_file))
         if default:  # read default options
             logging.info('loading default TILDA settings from options_default.yaml')
-            self.config_dict = yaml.safe_load(open(self.default_file))
-        elif os.path.isfile(self.options_file_path):  # check if yaml-file already exists
-            # read options.yaml
+            return
+        if os.path.isfile(self.options_file_path):  # check if yaml-file already exists, read options.yaml
             logging.info('loading local TILDA settings from options.yaml')
-            self.config_dict = yaml.safe_load(open(self.options_file_path))
+            config_dict = yaml.safe_load(open(self.options_file_path))
+            self.config_dict |= config_dict
+            if self.config_dict != config_dict:
+                self.save_to_file()
         else:  # file does not exist yet, create new one and warn user.
             logging.warning('No options.yaml found, creating a new one with default values.')
-            self.load_from_file(default=True)   # load default options
             self.save_to_file()
 
     def load_specific_from_file(self, setting_to_load, default=False):
@@ -151,12 +152,36 @@ class Options:
     def get_abs_freq(self):
         """
         use the settings from FREQUENCY section to determine the absolute laser frequency
-        :return: frequency in cm-1
+        :return: frequency in MHz
         """
-        freq_MHz = eval(self.config_dict['FREQUENCY']['arithmetic'],
-                        {'__builtins__': None},
-                        self.config_dict['FREQUENCY']['freq_dict'])
-        return Physics.wavenumber(freq_MHz)  # Main takes frequency in cm-1
+        return eval(self.config_dict['FREQUENCY']['arithmetic'], {'__builtins__': None},
+                    self.config_dict['FREQUENCY']['freq_dict'])
+
+    ''' ACCELERATION VOLTAGE RELATED '''
+    def set_volt(self, dic, arith):
+        """
+        :param dic: dictionary of voltages.
+        :param arith: string containing arithmetic to calculate the total acceleration voltage.
+        """
+        self.config_dict['VOLTAGE']['volt_dict'] = dic
+        self.config_dict['VOLTAGE']['arithmetic'] = arith
+
+    def get_volt_settings(self):
+        volt_list = self.config_dict['VOLTAGE']['volt_dict']  # dictionary with voltage names and values in V
+        volt_arith = self.config_dict['VOLTAGE']['arithmetic']  # arithmetic to calculate total acceleration voltage
+        return volt_list, volt_arith
+
+    def get_volt(self):
+        """
+        use the settings from VOLTAGE section to determine the absolute aceleration voltage
+        :return: Voltage in V
+        """
+        return eval(self.config_dict['VOLTAGE']['arithmetic'], {'__builtins__': None},
+                    self.config_dict['VOLTAGE']['volt_dict'])
+
+    ''' DOPPLER RELATED '''
+    def get_doppler_settings(self):
+        return self.config_dict['DOPPLER']
 
     def switch_sound_on_off(self, sound_is_on):
         self.config_dict['SOUND']['on'] = sound_is_on

@@ -728,7 +728,7 @@ p, li { white-space: pre-wrap; }
   </action>
   <action name="action_doppler_config">
    <property name="text">
-    <string>Doppler config ...</string>
+    <string>Doppler Config ...</string>
    </property>
   </action>
   <action name="action_track0">
