@@ -28,7 +28,7 @@ def fwhm_voigt_d(gamma, gamma_d, sigma, sigma_d):
     f_l_d = abs(gamma_d)
     f_g = abs(np.sqrt(8 * np.log(2)) * sigma)
     f_g_d = abs(np.sqrt(8 * np.log(2)) * sigma_d)
-    f_g_d = f_g_d * f_g / np.sqrt(0.2166 * f_l ** 2 + f_g ** 2)
+    f_g_d = f_g / np.sqrt(0.2166 * f_l ** 2 + f_g ** 2) * f_g_d
     f_l_d = (0.5346 + 0.2166 * f_l / np.sqrt(0.2166 * f_l ** 2 + f_g ** 2)) * f_l_d
     return np.sqrt(f_l_d ** 2 + f_g_d ** 2)
 

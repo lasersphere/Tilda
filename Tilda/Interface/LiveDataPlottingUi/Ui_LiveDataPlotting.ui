@@ -554,7 +554,7 @@ p, li { white-space: pre-wrap; }
     <addaction name="menu_lineshape"/>
     <addaction name="menu_track"/>
     <addaction name="separator"/>
-    <addaction name="action_fit_config"/>
+    <addaction name="action_doppler_config"/>
    </widget>
    <addaction name="menuView"/>
    <addaction name="menufit"/>
@@ -726,12 +726,9 @@ p, li { white-space: pre-wrap; }
     <string>Ctrl+G</string>
    </property>
   </action>
-  <action name="action_fit_config">
-   <property name="enabled">
-    <bool>false</bool>
-   </property>
+  <action name="action_doppler_config">
    <property name="text">
-    <string>config ...</string>
+    <string>Doppler config ...</string>
    </property>
   </action>
   <action name="action_track0">

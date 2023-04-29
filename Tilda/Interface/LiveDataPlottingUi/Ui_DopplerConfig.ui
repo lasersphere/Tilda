@@ -185,6 +185,16 @@
       </spacer>
      </item>
      <item>
+      <widget class="QCheckBox" name="check_col">
+       <property name="text">
+        <string>col</string>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QDoubleSpinBox" name="d_laser_frequency">
        <property name="buttonSymbols">
         <enum>QAbstractSpinBox::NoButtons</enum>
@@ -217,7 +227,7 @@
       </widget>
      </item>
      <item>
-      <widget class="QLineEdit" name="line_multiplicator">
+      <widget class="QLineEdit" name="line_freq_mult">
        <property name="maximumSize">
         <size>
          <width>50</width>

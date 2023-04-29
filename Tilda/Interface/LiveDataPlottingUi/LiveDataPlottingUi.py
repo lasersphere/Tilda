@@ -22,6 +22,7 @@ from PyQt5 import QtWidgets, QtCore, QtGui
 import Tilda.Application.Config as Cfg
 from Tilda.Interface.LiveDataPlottingUi.PreDurPostMeasUi import PrePostTabWidget
 from Tilda.Interface.LiveDataPlottingUi.Ui_LiveDataPlotting import Ui_MainWindow_LiveDataPlotting
+from Tilda.Interface.LiveDataPlottingUi.DopplerConfigUi import DopplerConfigUi
 from Tilda.Interface.ScanProgressUi.ScanProgressUi import ScanProgressUi
 from Tilda.PolliFit.Physics import freqFromWavenumber, volt_to_rel_freq
 from Tilda.PolliFit.FitRoutines import curve_fit
@@ -187,7 +188,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         ''' fit related '''
 
         self.action_fit.triggered.connect(self.fit_spectrum)
-        self.fit_config: dict[str, any] = {'model': Offset(NPeak(Voigt())), 'min': -np.inf, 'max': np.inf}
+        self.fit_config: dict[str, any] = {'model': Offset(NPeak(Voigt())), 'min': -np.inf, 'max': np.inf,
+                                           'doppler': self.setup_doppler_config()}
 
         self.action_clear.triggered.connect(self.clear_fit)
 
@@ -213,7 +215,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         QtWidgets.QShortcut(QtGui.QKeySequence('Ctrl+Shift+L'), self, functools.partial(self.next_lineshape, False))
         self.menu_lineshape.setTitle(self.menu_lineshape.title() + '\tCtrl+L  ')
 
-        self.action_fit_config.triggered.connect(self.open_fit_config)
+        self.doppler_config_ui = None
+        self.action_doppler_config.triggered.connect(self.open_doppler_config)
 
         ''' time resolved related: '''  # TODO if timegate change, sum not correct anymore
         self.add_time_resolved_plot()
@@ -231,9 +234,9 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.pushButton_save_after_scan.setText('save current view')
         self.pushButton_save_after_scan.clicked.connect(self.export_screen_shot)
 
-        self.setup_range_please = True  # boolean to store if the range has ben setup yet or not
+        self.setup_range_please = True  # boolean to store if the range has been set up yet or not
 
-        self.tres_offline_txt_itm = None  # Textitem to display, when tres plot is not plotted currently
+        self.tres_offline_txt_itm = None  # Text item to display, when tres plot is not plotted currently
 
         ''' all pmts related: '''
         #  dict for all_pmt_plot page containing a dict with the keys:
@@ -1527,11 +1530,11 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         i = model.p.get('sigma', -1)
         sigma, sigma_d = 0., 0.
         if i != -1:
-            sigma, sigma_d = popt[i], pcov[i, i]
+            sigma, sigma_d = popt[i], np.sqrt(pcov[i, i])
         i = model.p.get('Gamma', -1)
         gamma, gamma_d = 0., 0.
         if i != -1:
-            gamma, gamma_d = popt[i], pcov[i, i]
+            gamma, gamma_d = popt[i], np.sqrt(pcov[i, i])
         return fwhm_voigt(gamma, sigma), fwhm_voigt_d(gamma, gamma_d, sigma, sigma_d)
 
     def get_chi2(self, model, popt):
@@ -1543,26 +1546,27 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         chi2 = np.sum(residuals ** 2 / y_err ** 2)
         chi2 /= y.size - popt.size
         return chi2
-
-    # @staticmethod
-    # def get_freq_results(model, popt, pcov):
-    #     iso = Cfg._main_instance.main.scan_pars['iso']
-    #     db = Cfg._main_instance.main.database
-    #     db_con = sqlite3.connect(db)
-    #     db_cur = db_con.cursor()
-    #     db_cur.execute('SELECT mass FROM Isotopes WHERE iso = ?', iso)
-    #     data = db_cur.fetchall()
-    #     m = data[0][0]
-    #     q = 1
-    #     u = Cfg._main_instance.main.acc_voltage
-    #     u -= Cfg._main_instance.main.scan_pars.get('postAccOffsetVolt', 0.)
-    #     f = freqFromWavenumber(Cfg._main_instance.main.laserfreq)
-    #     pt, pc = popt.copy(), pcov.copy()
-    #     for par in ['sigma', 'gamma']:
-    #         i = model.p.get(par, -1)
-    #         if i != -1:
-    #             pc[i] *= volt_to_rel_freq()
-    #     return pt, pc
+    
+    def get_freq_results(self, model, popt, pcov):
+        doppler_config = self.fit_config['doppler']
+        m = doppler_config['mass']
+        q = doppler_config['charge']
+        f = doppler_config['laser_frequency'] * doppler_config['freq_mult']
+        col = doppler_config['col']
+        u = doppler_config['voltage'] * doppler_config['divider_ratio']
+        a, b = doppler_config['offset'],  doppler_config['slope']
+        pt, pc = popt.copy(), pcov.copy()
+        i_x0 = model.p.get('x0', -1)
+        if i_x0 == -1:
+            return pt, pc
+        pt[i_x0] = volt_to_rel_freq(u - (a + b * popt[i_x0]), q, m, f, 0., col)
+        for par in {'sigma', 'gamma', 'Gamma'}:
+            i = model.p.get(par, -1)
+            if i != -1:
+                pt[i] = abs(volt_to_rel_freq(u - (a + b * (popt[i_x0] + popt[i] / 2)), q, m, f, 0., col)
+                            - volt_to_rel_freq(u - (a + b * (popt[i_x0] - popt[i] / 2)), q, m, f, 0., col))
+                pc[i] = pcov[i] * (pt[i] / popt[i]) ** 2
+        return pt, pc
 
     def display_fit(self, model, popt, pcov):
         x_min, x_max = self.get_x_limits()
@@ -1577,11 +1581,12 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             '{}:   FWHM = {} +/- {}'.format(model.size, *clip_val_with_unc(*self.get_fwhm(model, popt, pcov))),
             '{}:   red. chi2 = {}'.format(model.size + 1, clip_val_with_unc(self.get_chi2(model, popt), 0.1)[0]))
 
-        # pt, pc = self.get_freq_results(model, popt, pcov)
-        # text += 'Fit results (MHz):\n{}\n{}'.format(
-        #     '\n'.join(['{}:   {} = {} +/- {}'.format(str(i).zfill(digits), name, *clip_val_with_unc(val, err))
-        #                for i, (name, val, err) in enumerate(zip(model.names, pt, np.sqrt(np.diag(pc))))]),
-        #     '{}:   FWHM = {} +/- {}'.format(model.size, *clip_val_with_unc(*self.get_fwhm(model, pt, pc))))
+        if not isinstance(model, Amplifier):
+            pt, pc = self.get_freq_results(model, popt, pcov)
+            text += 'Fit results (MHz):\n{}\n{}'.format(
+                '\n'.join(['{}:   {} = {} +/- {}'.format(str(i).zfill(digits - 1), name, *clip_val_with_unc(val, err))
+                           for i, (name, val, err) in enumerate(zip(model.names, pt, np.sqrt(np.diag(pc))))]),
+                '{}:   FWHM = {} +/- {}'.format(model.size, *clip_val_with_unc(*self.get_fwhm(model, pt, pc))))
 
         self.browser_fitresults.setText(text)
 
@@ -1714,8 +1719,36 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     def toggle_fit_auto(self):
         pass
 
-    def open_fit_config(self):
-        pass
+    def setup_doppler_config(self):
+        con = sqlite3.connect(Cfg._main_instance.database)
+        cur = con.cursor()
+        cur.execute('SELECT mass FROM Isotopes WHERE iso = {}'.format(Cfg._main_instance.scan_pars.get('iso', 'NULL')))
+        data = cur.fetchall()
+        mass = data[0][0] if data else 40.
+        doppler_config = dict(
+            mass=mass,
+            charge=1,
+            col=True,
+            laser_frequency=freqFromWavenumber(Cfg._main_instance.laserfreq),
+            freq_mult=1.,
+            voltage=Cfg._main_instance.acc_voltage,
+            divider_ratio=1.,
+            slope=50.,
+            offset=0.
+        )
+        con.close()
+        return doppler_config
+
+    def set_and_close_doppler_config(self):
+        if self.doppler_config_ui is None:
+            return
+        self.fit_config['doppler'] = {k: v for k, v in self.doppler_config_ui.doppler_config.items()}
+        self.doppler_config_ui = None
+
+    def open_doppler_config(self):
+        self.doppler_config_ui = DopplerConfigUi(self.fit_config['doppler'])
+        self.doppler_config_ui.close_signal.connect(self.set_and_close_doppler_config)
+        self.doppler_config_ui.show()
 
     def next_track(self, _next):
         actions = self.menu_track.actions() if _next else self.menu_track.actions()[::-1]
