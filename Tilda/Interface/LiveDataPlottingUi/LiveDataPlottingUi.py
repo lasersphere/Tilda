@@ -2101,11 +2101,11 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 if 'tres' in names[i]:
                     tres_csv_file = base_file_name + names[i] + '.csv'
                     # copy current matrix of counts with all zeros... but witht he applied time binning
-                    cts_float = deepcopy(self.spec_data.time_res[self.tres_sel_tr_ind][self.tres_sel_sc_ind]).astype(dtype=np.float)
+                    cts_float = deepcopy(self.spec_data.time_res[self.tres_sel_tr_ind][self.tres_sel_sc_ind]).astype(dtype=float)
                     t_axis = deepcopy(self.spec_data.t[self.tres_sel_tr_ind])
                     t_axis = np.insert(t_axis, 0, 0)  # expand t_axis by one for coord 0,0 in matrix
                     x_axis = deepcopy(self.spec_data.x[self.tres_sel_tr_ind])
-                    # cts_float = value.astype(dtype=np.float)
+                    # cts_float = value.astype(dtype=float)
                     # print(cts_float.shape)
                     cts_float = np.insert(cts_float, 0, x_axis, axis=1)
                     # print(cts_float_pl_x.shape)

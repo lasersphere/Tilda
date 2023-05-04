@@ -504,11 +504,15 @@ class Fitter(QObject):
             df = f_ion_c_sample - f_ion_a_sample
             f = Ph.col_acol_ec_ea(f_laser_c_sample, f_laser_a_sample, u_c * q, u_a * q, mass_sample)
 
+            u_c = [np.mean(u_c), np.std(u_c, ddof=1)]
+            u_a = [np.mean(u_a), np.std(u_a, ddof=1)]
             df = [np.mean(df), np.std(df, ddof=1)]
             f = [np.mean(f), np.std(f, ddof=1)]
             u = [np.mean(u), np.std(u, ddof=1)]
             du = [np.mean(du), np.std(du, ddof=1)]
         else:
+            # For u, the exact laser freq and mass that was previously used
+            # for the transformation has to be used, without uncertainties.
             u_c = [Ph.rel_freq_to_volt(f_ion_c[0], q, mass[0], f_laser_c[0], freq, True),
                    Ph.rel_freq_to_volt_d(f_ion_c[0], f_ion_c[1], q, mass[0], f_laser_c[0], freq)]
             u_a = [Ph.rel_freq_to_volt(f_ion_a[0], q, mass[0], f_laser_a[0], freq, True),
@@ -550,8 +554,9 @@ class Fitter(QObject):
 
             for _c in c:
                 for tr_ind, track in enumerate(self.meas[_c].x):
-                    self.models[_c].vals[self.models[_c].p[par]] -= df
-                    self.meas[_c].accVolt += du
+                    if tr_ind == 0:
+                        self.models[_c].vals[self.models[_c].p[par]] -= df
+                        self.meas[_c].accVolt += du / self.meas[_c].voltDivRatio.get('accVolt', 1.0)
                     self.meas[_c].x[tr_ind] += du
                     if self.config['col_acol_config']['save_voltage']:
                         with con:
@@ -560,14 +565,15 @@ class Fitter(QObject):
             
             for _a in a:
                 for tr_ind, track in enumerate(self.meas[_a].x):
-                    self.models[_a].vals[self.models[_a].p[par]] += df
-                    self.meas[_a].accVolt += du
+                    if tr_ind == 0:
+                        self.models[_a].vals[self.models[_a].p[par]] += df
+                        self.meas[_a].accVolt += du / self.meas[_a].voltDivRatio.get('accVolt', 1.0)
                     self.meas[_a].x[tr_ind] += du
                     if self.config['col_acol_config']['save_voltage']:
                         with con:
                             con.execute('UPDATE Files SET accVolt = ? WHERE file = ?',
                                         (self.meas[_a].accVolt, self.meas[_a].file))
-
+        con.commit()
         con.close()
         self.gen_data()
 
@@ -625,8 +631,7 @@ class Fitter(QObject):
 
         col, acol = self._gen_col_acol()
 
-        # for x, y, model in zip(self.x, self.y, self.models):
-        #     model.set_val(model.p[self.config['col_acol_config']['parameter']], x[np.argmax(y)])
+        # TODO: Set equal voltages for the c and a files beforehand?
 
         self._fit()
         results = self._calc_col_acol(col, acol)

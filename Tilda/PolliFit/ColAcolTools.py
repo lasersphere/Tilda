@@ -21,12 +21,12 @@ def absolute_frequency(db, fit1, run1, fit2, run2):
     """
 
     #Fit1 processing
-    file1 = select_from_db(db, 'type, laserFreq, colDirTrue, laserFreq_d', 'Files', [['file'], [fit1]])
+    file1 = select_from_db(db, 'type, laserFreq, colDirTrue, laserFreq_d, voltDivRatio', 'Files', [['file'], [fit1]])
     #print(fit1)
     isotope1 = select_from_db(db, 'mass, mass_d', 'Isotopes', [['iso'], [file1[0][0]]])
     fitRes1 = select_from_db(db, 'run, pars', 'FitRes', [['file', 'run'], [fit1, run1]])
     lineVar1 = select_from_db(db, 'lineVar', 'Runs', [['run'], [run1]])
-    f_run1 = select_from_db(db, 'frequency', 'Lines', [['lineVar'], [lineVar1[0][0]]])
+    f_run1 = select_from_db(db, 'frequency, charge', 'Lines', [['lineVar'], [lineVar1[0][0]]])
 
     fitPars1 = ast.literal_eval("".join(fitRes1[0][1]))
     center1 = float(fitPars1['center'][0])
@@ -34,15 +34,21 @@ def absolute_frequency(db, fit1, run1, fit2, run2):
     refFreq1 = float(f_run1[0][0])
     relFreq1 = center1 + refFreq1
     relFreq1_d = center1_d
-    isoMass1 = float(isotope1[0][0])
+    charge1 = float(f_run1[0][1])
+    isoMass1 = float(isotope1[0][0] - charge1 * Physics.me_u)
     isoMass1_d = float(isotope1[0][1])
     laserFreq1 = float(file1[0][1])
     colDir1 = int(file1[0][2])
     laserFreq1_d = float(file1[0][3])
+    voltDivRatio = eval(file1[0][4])
+    laserFreq1 *= voltDivRatio.get('laserFreq', 1.0)
+    laserFreq1_d *= voltDivRatio.get('laserFreq', 1.0)
 
     velCenter1 = abs(Physics.invRelDoppler(laserFreq1, relFreq1))  # Velocity
     # velCenter1_d = ((2*Physics.c*relFreq1/((1+(relFreq1/laserFreq1)**2)*laserFreq1**2))-(2*Physics.c*relFreq1*(-1+(relFreq1/laserFreq1)**2)/((1+(relFreq1/laserFreq1)**2)**2 * laserFreq1**2)))*relFreq1_d
-    velCenter1_d = (4 * Physics.c * laserFreq1 * relFreq1 / (laserFreq1 ** 2 + relFreq1 ** 2) ** 2) * (laserFreq1 ** 2 * relFreq1_d ** 2 + relFreq1 ** 2 * laserFreq1_d) ** 0.5
+    # For u, the exact laser freq and mass that was previously used
+    # for the transformation has to be used, without uncertainties.
+    velCenter1_d = (4 * Physics.c * laserFreq1 * relFreq1 / (laserFreq1 ** 2 + relFreq1 ** 2) ** 2) * abs(laserFreq1 * relFreq1_d)
     #energCenter1 = (isoMass1 * Physics.u * velCenter1 ** 2) / 2 / Physics.qe
     energCenter1 = Physics.relEnergy(velCenter1, isoMass1 * Physics.u) / Physics.qe
     #energCenter1_d = ((isoMass1 * Physics.u * velCenter1 / Physics.qe * velCenter1_d)**2 + (velCenter1 ** 2 / 2 / Physics.qe * isoMass1_d * Physics.u)**2)**0.5
@@ -56,12 +62,12 @@ def absolute_frequency(db, fit1, run1, fit2, run2):
 
     #Fit2 processing
 
-    file2 = select_from_db(db, 'type, laserFreq, colDirTrue, laserFreq_d', 'Files', [['file'], [fit2]])
+    file2 = select_from_db(db, 'type, laserFreq, colDirTrue, laserFreq_d, voltDivRatio', 'Files', [['file'], [fit2]])
     #print(fit2)
     isotope2 = select_from_db(db, 'mass, mass_d', 'Isotopes', [['iso'], [file2[0][0]]])
     fitRes2 = select_from_db(db, 'run, pars', 'FitRes', [['file', 'run'], [fit2, run2]])
     lineVar2 = select_from_db(db, 'lineVar', 'Runs', [['run'], [run2]])
-    f_run2 = select_from_db(db, 'frequency', 'Lines', [['lineVar'], [lineVar2[0][0]]])
+    f_run2 = select_from_db(db, 'frequency, charge', 'Lines', [['lineVar'], [lineVar2[0][0]]])
 
     fitPars2 = ast.literal_eval("".join(fitRes2[0][1]))
     center2 = float(fitPars2['center'][0])
@@ -69,15 +75,21 @@ def absolute_frequency(db, fit1, run1, fit2, run2):
     refFreq2 = float(f_run2[0][0])
     relFreq2 = center2 + refFreq2
     relFreq2_d = center2_d
-    isoMass2 = float(isotope2[0][0])
+    charge2 = float(f_run2[0][1])
+    isoMass2 = float(isotope2[0][0] - charge2 * Physics.me_u)
     isoMass2_d = float(isotope2[0][1])
     laserFreq2 = float(file2[0][1])
     colDir2 = int(file2[0][2])
     laserFreq2_d = float(file2[0][3])
+    voltDivRatio = eval(file1[0][4])
+    laserFreq2 *= voltDivRatio.get('laserFreq', 1.0)
+    laserFreq2_d *= voltDivRatio.get('laserFreq', 1.0)
 
     velCenter2 = abs(Physics.invRelDoppler(laserFreq2, relFreq2)) #Veolocity
     #velCenter2_d = ((2*Physics.c*relFreq2/((1+(relFreq2/laserFreq2)**2)*laserFreq2**2))-(2*Physics.c*relFreq2*(-1+(relFreq2/laserFreq2)**2)/((1+(relFreq2/laserFreq2)**2)**2 * laserFreq2**2)))*relFreq2_d
-    velCenter2_d = (4 * Physics.c * laserFreq2 * relFreq2 / (laserFreq2 ** 2 + relFreq2 ** 2) ** 2) * (laserFreq2 ** 2 * relFreq2_d ** 2 + relFreq2 ** 2 * laserFreq2_d) ** 0.5
+    # For u, the exact laser freq and mass that was previously used
+    # for the transformation has to be used, without uncertainties.
+    velCenter2_d = (4 * Physics.c * laserFreq2 * relFreq2 / (laserFreq2 ** 2 + relFreq2 ** 2) ** 2) * abs(laserFreq2 * relFreq2_d)
     #energCenter2 = (isoMass2 * Physics.u * velCenter2 ** 2) / 2 / Physics.qe
     energCenter2 = Physics.relEnergy(velCenter2, isoMass2 * Physics.u) / Physics.qe
     #energCenter2_d = ((isoMass2 * Physics.u * velCenter2 / Physics.qe * velCenter2_d) ** 2 + (velCenter2 ** 2 / 2 / Physics.qe * isoMass2_d * Physics.u) ** 2) ** 0.5
@@ -154,7 +166,7 @@ def files_to_csv(db, measList, pathOut):
 
     # Calculate weighted avg + error and std of the avg
     wAvg, wError, chi = Analyzer.weightedAverage(fL, fL_d)
-    avgError = numpy.std(fL) / (len(fL))**0.5
+    avgError = numpy.std(fL, ddof=1) / (len(fL))**0.5
     avg = numpy.mean(fL)
     file.write('\n')
     file.write('Avg: ' + str(avg) + '\n')
@@ -165,4 +177,3 @@ def files_to_csv(db, measList, pathOut):
     print('Done')
     plot.colAcolPlot(mL, fL, fL_d)
     plot.show()
-

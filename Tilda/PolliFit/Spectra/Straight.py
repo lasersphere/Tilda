@@ -13,7 +13,7 @@ class Straight(object):
     A straight as lineshape object.
     """
 
-    def __init__(self):
+    def __init__(self, _=None):
         self.nPar = 2
         self.pb = 0
         self.pm = 1

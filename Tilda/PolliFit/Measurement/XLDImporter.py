@@ -45,7 +45,7 @@ class XLDImporter(SpecData):
         self.col = eval(header.findtext('colDirTrue'))
 
  
-    def preProc(self, db):
+    def pre_process(self, db):
         print('Kepco importer is using db', db)
         con = sqlite3.connect(db)
         cur = con.cursor()

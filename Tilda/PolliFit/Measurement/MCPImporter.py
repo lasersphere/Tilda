@@ -143,7 +143,7 @@ class MCPImporter(SpecData):
                         self.err[i][j][self.err[i][j] == 0.0] = 1
             f.close()
 
-    def preProc(self, db, from_input=False):
+    def pre_process(self, db, from_input=False):
         if not from_input:
             print('MCPimporter is using db', db)
             con = sqlite3.connect(db)

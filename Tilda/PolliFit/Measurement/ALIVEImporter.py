@@ -90,7 +90,7 @@ class ALIVEImporter(SpecData):
                     self.cts[0][j][i] = float(counts)
                     self.err[0][j][i] = max(np.sqrt(float(counts)), 1)
 
-    def preProc(self, db):
+    def pre_process(self, db):
         print('ALIVEImporter is using db', db)
         con = sqlite3.connect(db)
         cur = con.cursor()
@@ -153,6 +153,6 @@ if __name__=='__main__':
     meas = ALIVEImporter(test_data_path)
     db = os.path.join(project_path, db)
     print(db, os.path.isfile(db))
-    meas.preProc(db)
+    meas.pre_process(db)
     plt = MplPl.plot(meas.getArithSpec([0], -1))
     MplPl.show(True)

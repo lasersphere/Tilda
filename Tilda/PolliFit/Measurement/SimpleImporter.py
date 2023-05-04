@@ -45,7 +45,7 @@ class SimpleImporter(SpecData):
                     #self.err[0][j][i] = max(np.sqrt(float(counts)), 1)
                     self.err[0][j][i] = 0.01
     
-    def preProc(self, db):
+    def pre_process(self, db):
         print('SimpleImporter is using db', db)
         con = sqlite3.connect(db)
         cur = con.cursor()

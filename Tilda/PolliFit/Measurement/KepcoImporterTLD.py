@@ -50,7 +50,7 @@ class KepcoImporterTLD(SpecData):
                     self.err[0][j][i] = self.cts[0][j][i] * 10**-4
 
 
-    def preProc(self, db):
+    def pre_process(self, db):
         print('Kepco importer is using db', db)
         con = sqlite3.connect(db)
         cur = con.cursor()
