@@ -216,6 +216,8 @@ class SpectraFit:
         self.fitter.gen_data()
 
     def set_norm_scans(self):
+        if self.fitter is None:
+            return
         self.fitter.config['norm_scans'] = self.norm_scans
         self.fitter.gen_data()
 

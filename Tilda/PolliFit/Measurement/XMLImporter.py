@@ -396,8 +396,8 @@ class XMLImporter(SpecData):
                             self.x[tr_ind], self.lineMult, self.lineOffset, self.offset[tr_ind], self.accVolt,
                             self.voltDivRatio, offset_by_dev_mean=self.offset_by_dev_mean[tr_ind])
                     self.x_units = self.x_units_enums.total_volts
-                self.laserFreq *= self.voltDivRatio['laserFreq']
-                self.laserFreq_d *= self.voltDivRatio['laserFreq']
+                self.laserFreq *= self.voltDivRatio.get('laserFreq', 1.)
+                self.laserFreq_d *= self.voltDivRatio.get('laserFreq', 1.)
 
             elif self.seq_type == 'kepco':  # correct kepco scans by the measured offset before the scan.
                 db_ret = TildaTools.select_from_db(db, 'offset', 'Files', [['file'], [self.file]])
