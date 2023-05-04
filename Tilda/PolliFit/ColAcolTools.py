@@ -46,9 +46,9 @@ def absolute_frequency(db, fit1, run1, fit2, run2):
 
     velCenter1 = abs(Physics.invRelDoppler(laserFreq1, relFreq1))  # Velocity
     # velCenter1_d = ((2*Physics.c*relFreq1/((1+(relFreq1/laserFreq1)**2)*laserFreq1**2))-(2*Physics.c*relFreq1*(-1+(relFreq1/laserFreq1)**2)/((1+(relFreq1/laserFreq1)**2)**2 * laserFreq1**2)))*relFreq1_d
-    # TODO: With the below formula, the uncertainty of the laser freq is used twice which is statistically not correct.
-    #  For the transformation here, the uncertainty of the laser freq should not be considered.
-    velCenter1_d = (4 * Physics.c * laserFreq1 * relFreq1 / (laserFreq1 ** 2 + relFreq1 ** 2) ** 2) * (laserFreq1 ** 2 * relFreq1_d ** 2 + relFreq1 ** 2 * laserFreq1_d) ** 0.5
+    # For u, the exact laser freq and mass that was previously used
+    # for the transformation has to be used, without uncertainties.
+    velCenter1_d = (4 * Physics.c * laserFreq1 * relFreq1 / (laserFreq1 ** 2 + relFreq1 ** 2) ** 2) * abs(laserFreq1 * relFreq1_d)
     #energCenter1 = (isoMass1 * Physics.u * velCenter1 ** 2) / 2 / Physics.qe
     energCenter1 = Physics.relEnergy(velCenter1, isoMass1 * Physics.u) / Physics.qe
     #energCenter1_d = ((isoMass1 * Physics.u * velCenter1 / Physics.qe * velCenter1_d)**2 + (velCenter1 ** 2 / 2 / Physics.qe * isoMass1_d * Physics.u)**2)**0.5
@@ -87,7 +87,9 @@ def absolute_frequency(db, fit1, run1, fit2, run2):
 
     velCenter2 = abs(Physics.invRelDoppler(laserFreq2, relFreq2)) #Veolocity
     #velCenter2_d = ((2*Physics.c*relFreq2/((1+(relFreq2/laserFreq2)**2)*laserFreq2**2))-(2*Physics.c*relFreq2*(-1+(relFreq2/laserFreq2)**2)/((1+(relFreq2/laserFreq2)**2)**2 * laserFreq2**2)))*relFreq2_d
-    velCenter2_d = (4 * Physics.c * laserFreq2 * relFreq2 / (laserFreq2 ** 2 + relFreq2 ** 2) ** 2) * (laserFreq2 ** 2 * relFreq2_d ** 2 + relFreq2 ** 2 * laserFreq2_d) ** 0.5
+    # For u, the exact laser freq and mass that was previously used
+    # for the transformation has to be used, without uncertainties.
+    velCenter2_d = (4 * Physics.c * laserFreq2 * relFreq2 / (laserFreq2 ** 2 + relFreq2 ** 2) ** 2) * abs(laserFreq2 * relFreq2_d)
     #energCenter2 = (isoMass2 * Physics.u * velCenter2 ** 2) / 2 / Physics.qe
     energCenter2 = Physics.relEnergy(velCenter2, isoMass2 * Physics.u) / Physics.qe
     #energCenter2_d = ((isoMass2 * Physics.u * velCenter2 / Physics.qe * velCenter2_d) ** 2 + (velCenter2 ** 2 / 2 / Physics.qe * isoMass2_d * Physics.u) ** 2) ** 0.5

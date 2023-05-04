@@ -511,6 +511,8 @@ class Fitter(QObject):
             u = [np.mean(u), np.std(u, ddof=1)]
             du = [np.mean(du), np.std(du, ddof=1)]
         else:
+            # For u, the exact laser freq and mass that was previously used
+            # for the transformation has to be used, without uncertainties.
             u_c = [Ph.rel_freq_to_volt(f_ion_c[0], q, mass[0], f_laser_c[0], freq, True),
                    Ph.rel_freq_to_volt_d(f_ion_c[0], f_ion_c[1], q, mass[0], f_laser_c[0], freq)]
             u_a = [Ph.rel_freq_to_volt(f_ion_a[0], q, mass[0], f_laser_a[0], freq, True),
