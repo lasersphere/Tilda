@@ -190,18 +190,17 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
         self.action_fit.triggered.connect(self.fit_spectrum)
         self.fit_config: dict[str, any] = {'model': Offset(NPeak(Voigt())), 'min': -np.inf, 'max': np.inf,
-                                           'doppler': self.setup_doppler_config()}
+                                           'doppler': setup_doppler_config()}
+        self.updated_doppler_config_from_db = False
 
         self.action_clear.triggered.connect(self.clear_fit)
 
         self.action_fit_cursor.triggered.connect(self.toggle_fit_cursor)
-        self.sum_wid.scene().sigMouseClicked.connect(self.set_cursor)
         self.cursor_xy_set = False
         self.cursor_xy = (0., 0.)
         self.cursor_data = None
 
         self.action_set_limits.triggered.connect(self.toggle_set_limits)
-        self.sum_wid.scene().sigMouseClicked.connect(self.set_limits)
 
         self.action_fit_cursor.triggered.connect(self.toggle_fit_cursor)
         self.min_set = False
@@ -399,6 +398,9 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.sum_plot_layout.addWidget(self.sum_wid)
         self.widget_inner_sum_plot.setLayout(self.sum_plot_layout)
 
+        self.sum_wid.scene().sigMouseClicked.connect(self.set_cursor)
+        self.sum_wid.scene().sigMouseClicked.connect(self.set_limits)
+
     def add_time_resolved_plot(self):
         """ all plots on the time resolved tab -> time_resolved, time_projection, voltage_projection, sum """
         # time resolved related:
@@ -538,7 +540,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         """
         setup a new track -> set the indices for track and scaler
         """
-        logging.info('livbeplot window received new track with %s %s ' % rcv_tpl)
+        logging.info('liveplot window received new track with %s %s ' % rcv_tpl)
         self.tres_sel_tr_ind, self.tres_sel_tr_name = rcv_tpl[0]
         if self.subscribe_as_live_plot:
             logging.info(
@@ -1503,6 +1505,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         return ~mask
 
     def fit_spectrum(self):
+        if self.spec_data is None:
+            return
         self.sum_x, self.sum_y, self.sum_err = self.spec_data.getArithSpec(
             self.sum_scaler, self.sum_track, self.function)
 
@@ -1522,6 +1526,21 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             popt, pcov = np.array(model.vals, dtype=float), np.zeros((model.size, model.size), dtype=float)
 
         self.display_fit(model, popt, pcov)
+
+    def update_doppler_config_from_db(self):
+        if self.spec_data is None:
+            return
+        self.updated_doppler_config_from_db = True
+        doppler_config = self.fit_config['doppler']
+        try:
+            con = sqlite3.connect(Cfg._main_instance.database)
+            cur = con.cursor()
+            cur.execute('SELECT mass FROM Isotopes WHERE iso = ?', (self.spec_data.type, ))
+            data = cur.fetchall()
+            if data and data[0][0] > 0:
+                doppler_config['mass'] = data[0][0]
+        except Exception as e:
+            logging.warning('Error while reading database:\n{}'.format(repr(e)))
 
     @staticmethod
     def get_fwhm(model, popt, pcov):
@@ -1569,6 +1588,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         return pt, pc
 
     def display_fit(self, model, popt, pcov):
+        if not self.updated_doppler_config_from_db:
+            self.update_doppler_config_from_db()
         x_min, x_max = self.get_x_limits()
         x = np.arange(x_min, x_max, model.dx)
         self.fit_data_item.setData(x, model(x, *popt))
@@ -1652,7 +1673,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.update_cursor_data()
 
     def set_cursor(self, event):
-        if not self.action_fit_cursor.isChecked():
+        if not self.action_fit_cursor.isChecked() or self.spec_data is None:
             return
         mouse_point = self.sum_plt_itm.vb.mapSceneToView(event._scenePos)
         self.set_cursor_xy(mouse_point.x(), mouse_point.y())
@@ -1719,22 +1740,9 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     def toggle_fit_auto(self):
         pass
 
-    @staticmethod
-    def setup_doppler_config():
-        doppler_config = setup_doppler_config()
-        try:
-            con = sqlite3.connect(Cfg._main_instance.database)
-            cur = con.cursor()
-            cur.execute('SELECT mass FROM Isotopes WHERE iso = {}'
-                        .format(Cfg._main_instance.scan_pars.get('iso', 'NULL')))
-            data = cur.fetchall()
-            if data:
-                doppler_config['mass'] = data[0][0]
-        except Exception as e:
-            logging.warning('Error while reading database:\n{}'.format(repr(e)))
-        return doppler_config
-
     def open_doppler_config(self):
+        if not self.updated_doppler_config_from_db:
+            self.update_doppler_config_from_db()
         self.doppler_config_ui = DopplerConfigUi(self, self.fit_config['doppler'])
         self.doppler_config_ui.close_signal.connect(self.set_and_close_doppler_config)
 
@@ -1817,13 +1825,21 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
     def reset_sum_plots(self):
         """
-        reset the sum plot is not really necessary, because it will always look the same more or less.
+        reset the sum plot.
         """
+        self.reset_cursor()
+        if self.action_fit_cursor.isChecked():
+            self.action_fit_cursor.setChecked(False)
+            self.toggle_fit_cursor()
+        if self.action_set_limits.isChecked():
+            self.action_set_limits.setChecked(False)
+            self.toggle_set_limits()
         QtWidgets.QWidget().setLayout(self.sum_plot_layout)
         self.sum_plt_data = None
         self.sum_scaler = None
         self.sum_track = None
         self.add_sum_plot()
+        self.updated_doppler_config_from_db = False
         self.comboBox_select_sum_for_pmts.currentIndexChanged.emit(self.comboBox_select_sum_for_pmts.currentIndex())
 
     def reset_t_res_plot(self):
