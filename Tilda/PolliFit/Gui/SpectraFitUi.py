@@ -10,6 +10,8 @@ TODO: Arithmetics.
 import os
 import ast
 from copy import deepcopy
+# noinspection PyUnresolvedReferences
+from numpy import inf, Inf, infty, Infinity, PINF
 from PyQt5 import QtWidgets, QtCore
 # noinspection PyProtectedMember
 from matplotlib.axes._base import _process_plot_format

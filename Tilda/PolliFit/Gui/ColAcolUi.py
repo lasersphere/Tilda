@@ -127,15 +127,19 @@ class ColAcolUi(QtWidgets.QWidget, Ui_ColAcol):
         if r_acol is not None:
             for each in r_acol:
                 # self.addToAll(each[0] + " - Run: " + each[1])
-                col = TiTs.select_from_db(db, 'colDirTrue', 'Files', [['file'], [each[0]]], caller_name=__name__)[0][0]
-                if not col:
+                col = TiTs.select_from_db(db, 'colDirTrue', 'Files', [['file'], [each[0]]], caller_name=__name__)
+                if col is None:
+                    continue
+                if not col[0][0]:
                     self.addToAcol(each[0])
 
         if r_col is not None:
             for each in r_col:
                 # self.addToAll(each[0] + " - Run: " + each[1])
-                col = TiTs.select_from_db(db, 'colDirTrue', 'Files', [['file'], [each[0]]], caller_name=__name__)[0][0]
-                if col:
+                col = TiTs.select_from_db(db, 'colDirTrue', 'Files', [['file'], [each[0]]], caller_name=__name__)
+                if col is None:
+                    continue
+                if col[0][0]:
                     self.addToCol(each[0])
 
     def remove(self):

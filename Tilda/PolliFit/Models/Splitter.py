@@ -84,6 +84,10 @@ class Hyperfine(Splitter):
         for i in range(self.n_u):
             self._add_arg('{}u'.format(ascii_uppercase[i]), 0., True, False)
 
+        for i in range(min([self.n_l, self.n_u])):
+            fix = '{} / {}'.format('{}u'.format(ascii_uppercase[i]), '{}l'.format(ascii_uppercase[i]))
+            self._add_arg('{}_ratio'.format(ascii_uppercase[i]), 0., fix, False)
+
         for i, (t, intensity) in enumerate(zip(self.transitions, self.racah_intensities)):
             self.racah_indices.append(self._index)
             self._add_arg('int({}, {})'.format(t[0][0], t[0][1]), intensity, True, False)

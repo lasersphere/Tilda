@@ -27,7 +27,7 @@ class Model:
     def __call__(self, x, *args, **kwargs):
         return self.evaluate(x, *self.update_args(args), **kwargs)
     
-    def evaluate(self, x, *args, **kwargs):  # Reimplement this function in subclasses (not evaluate).
+    def evaluate(self, x, *args, **kwargs):  # Reimplement this function in subclasses.
         pass
 
     def _add_arg(self, name, val, fix, link):
@@ -133,7 +133,10 @@ class Model:
             self.fixes[i] = fix
             return
         if isinstance(fix, int) or isinstance(fix, float):
-            fix = bool(fix)
+            if isinstance(fix, bool) or fix <= 0 or np.isinf(fix):
+                fix = bool(fix)
+            else:
+                fix = float(fix)
             expr = 'args[{}]'.format(i)
         elif isinstance(fix, str):
             _fix = fix
@@ -141,7 +144,7 @@ class Model:
                 _fix = _fix.replace(name, 'eval(self.expressions[{}])'.format(j))
             expr = _fix
             try:
-                eval(expr, {}, {'self': self, 'args': self.vals})
+                self._eval_zero_division(self.vals, expr)
             except (ValueError, TypeError, SyntaxError, NameError) as e:
                 print('Invalid expression for parameter \'{}\': {}. Got a {}.'.format(self.names[i], fix, repr(e)))
                 return
@@ -173,8 +176,14 @@ class Model:
         if isinstance(link, int) or isinstance(link, float):
             self.links[i] = bool(link)
 
+    def _eval_zero_division(self, args, expr):
+        try:
+            return eval(expr, {}, {'self': self, 'args': args})
+        except ZeroDivisionError:
+            return 0.
+
     def update_args(self, args):
-        return tuple(eval(expr, {}, {'self': self, 'args': args}) for expr in self.expressions)
+        return tuple(self._eval_zero_division(args, expr) for expr in self.expressions)
 
     def update(self):
         self.set_vals(self.update_args(self.vals), force=True)
@@ -201,6 +210,10 @@ class Model:
             if isinstance(fix, bool):
                 b_lower.append(-np.inf)
                 b_upper.append(np.inf)
+            elif isinstance(fix, float):
+                b_lower.append(-np.inf)
+                b_upper.append(np.inf)
+                fixed[i] = False
             elif isinstance(fix, list):
                 _bounds = True
                 b_lower.append(fix[0])
@@ -375,6 +388,9 @@ class Listed(Model):
             for j, (name, val, fix, link) in enumerate(model.get_pars()):
                 self.model_map.append(i)
                 self.index_map.append(j)
+                if isinstance(fix, str):
+                    for _name in model.names:
+                        fix = fix.replace(_name, '{}{}'.format(_name, label))
                 self._add_arg('{}{}'.format(name, label), val, fix, link)
 
     def set_val(self, i, val, force=False):
