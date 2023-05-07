@@ -8,13 +8,13 @@ import os
 import ast
 import sqlite3
 import numpy as np
+import pycol.models as mod
 
 import Tilda.PolliFit.TildaTools as TiTs
 from Tilda.PolliFit import MPLPlotter as Plot
 from Tilda.PolliFit.DBIsotope import DBIsotope
 import Tilda.PolliFit.Measurement.MeasLoad as MeasLoad
 from Tilda.PolliFit.Fitter import Fitter, print_colored
-import Tilda.PolliFit.Models.Collection as Mod
 
 
 LEGACY_PARS = {'lor': 'Gamma', 'gamma': 'Gamma', 'gau': 'sigma'}
@@ -38,6 +38,29 @@ def _get_iso_par_from_dict(par_dict, par):
         return par_dict[par]
     except KeyError:
         return par_dict[par[:par.find('(')]]
+
+
+def gen_splitter_model(config, iso):
+    if config['qi'] and (config['hf_config']['enabled_l'] or config['hf_config']['enabled_u']):
+        pass
+    elif config['qi']:
+        pass
+    elif config['hf_config']['enabled_l'] or config['hf_config']['enabled_u']:
+        return mod.HyperfineMixed, (iso.I, iso.Jl, iso.Ju, iso.name, config['hf_config'])
+    else:
+        return mod.Hyperfine, (iso.I, iso.Jl, iso.Ju, iso.name)
+    raise ValueError('Specified splitter model not available.')
+
+
+def gen_splitter_models(config, iso):
+    splitter, _args = gen_splitter_model(config, iso)
+    args = [_args, ]
+    _iso = iso.m
+    while _iso is not None:
+        _, _args = gen_splitter_model(config, _iso)
+        args.append(_args)
+        _iso = _iso.m
+    return splitter, args
 
 
 class SpectraFit:
@@ -105,13 +128,13 @@ class SpectraFit:
         return file_paths
 
     def gen_model(self, config, iso):
-        splitter, args = Mod.gen_splitter_models(config, iso)
-        splitter_model = Mod.SplitterSummed([
-            splitter(eval('Mod.{}()'.format(config['lineshape'])), *_args) for _args in args])
+        splitter, args = gen_splitter_models(config, iso)
+        splitter_model = mod.SplitterSummed([
+            splitter(eval('mod.{}()'.format(config['lineshape'])), *_args) for _args in args])
         self.splitter_models.append(splitter_model)
-        npeaks_model = Mod.NPeak(model=splitter_model, n_peaks=config['npeaks'])
+        npeaks_model = mod.NPeak(model=splitter_model, n_peaks=config['npeaks'])
         if config['convolve'] != 'None':
-            npeaks_model = eval('Mod.{}Convolved'.format(config['convolve']))(model=npeaks_model)
+            npeaks_model = eval('mod.{}Convolved'.format(config['convolve']))(model=npeaks_model)
         offset = config['offset_order']
         x_cuts = None
         if config['offset_per_track']:
@@ -119,7 +142,7 @@ class SpectraFit:
             # The actual x_cuts are set after the fitter is created.
         else:
             offset = [offset[0], ]
-        offset_model = Mod.Offset(model=npeaks_model, x_cuts=x_cuts, offsets=offset)
+        offset_model = mod.Offset(model=npeaks_model, x_cuts=x_cuts, offsets=offset)
         return offset_model
 
     def gen_config(self):
@@ -168,7 +191,7 @@ class SpectraFit:
             if isinstance(meas[-1], MeasLoad.XMLImporter):
                 if meas[-1].seq_type == 'kepco':
                     iso.append(None)
-                    models.append(Mod.Amplifier(order=config['offset_order'][0]))
+                    models.append(mod.Amplifier(order=config['offset_order'][0]))
                 else:
                     iso.append(DBIsotope(self.db, meas[-1].type, lineVar=linevar))
                     models.append(self.gen_model(config, iso[-1]))

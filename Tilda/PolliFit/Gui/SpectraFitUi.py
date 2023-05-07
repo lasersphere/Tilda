@@ -15,6 +15,7 @@ from numpy import inf, Inf, infty, Infinity, PINF
 from PyQt5 import QtWidgets, QtCore
 # noinspection PyProtectedMember
 from matplotlib.axes._base import _process_plot_format
+from pycol.models import SPECTRA, CONVOLVE
 
 from Tilda.PolliFit.Gui.Ui_SpectraFit import Ui_SpectraFit
 from Tilda.PolliFit.Gui.TRSConfigUi import TRSConfigUi
@@ -22,8 +23,6 @@ from Tilda.PolliFit.Gui.ColAcolConfigUi import ColAcolConfigUi
 from Tilda.PolliFit.Gui.HFMixingConfigUi import HFMixingConfigUi
 from Tilda.PolliFit.SpectraFit import SpectraFit
 from Tilda.PolliFit.Fitter import COL_ACOL_CONFIG
-from Tilda.PolliFit.Models.Spectrum import SPECTRA
-from Tilda.PolliFit.Models.Convolved import CONVOLVE
 from Tilda.PolliFit import TildaTools as TiTs
 
 colors = ['b', 'g', 'r', 'x', 'm', 'y', 'k']

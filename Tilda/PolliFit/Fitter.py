@@ -10,12 +10,12 @@ import sqlite3
 from scipy.stats import norm
 import itertools as it
 from PyQt5.QtCore import QObject, pyqtSignal
+from pycol.models import Linked
 
 # noinspection PyUnresolvedReferences
 from Tilda.PolliFit.FitRoutines import curve_fit, const
 from Tilda.PolliFit import Physics as Ph
 from Tilda.PolliFit.Tools import print_colored, print_cov
-from Tilda.PolliFit.Models.Collection import Linked
 
 
 COL_ACOL_CONFIG = {'enabled': False, 'rule': 'acca / caac', 'parameter': 'center',
