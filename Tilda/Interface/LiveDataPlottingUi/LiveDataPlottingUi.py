@@ -18,6 +18,7 @@ from copy import deepcopy
 import sqlite3
 from datetime import datetime, timedelta
 import numpy as np
+import warnings
 from PyQt5 import QtWidgets, QtCore, QtGui
 
 import Tilda.Application.Config as Cfg
@@ -1502,6 +1503,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     def get_mask_limits(self):
         mask = self.sum_x < self.fit_config['min']
         mask += self.sum_x > self.fit_config['max']
+        mask += np.isnan(self.sum_y)
         return ~mask
 
     def fit_spectrum(self):
@@ -1559,12 +1561,15 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     def get_chi2(self, model, popt):
         mask = self.get_mask_limits()
         if not np.any(mask):
-            return
+            return np.nan
         x, y, y_err = self.sum_x[mask], self.sum_y[mask], self.sum_err[mask]
-        residuals = model(x, *popt) - y
-        chi2 = np.sum(residuals ** 2 / y_err ** 2)
-        chi2 /= y.size - popt.size
-        return chi2
+        try:
+            residuals = model(x, *popt) - y
+            chi2 = np.sum(residuals ** 2 / y_err ** 2)
+            chi2 /= y.size - popt.size
+            return chi2
+        except (RuntimeError, ZeroDivisionError):
+            return np.nan
     
     def get_freq_results(self, model, popt, pcov):
         doppler_config = self.fit_config['doppler']
@@ -1595,19 +1600,21 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.fit_data_item.setData(x, model(x, *popt))
         self.fit_data_item.setOpacity(1)
 
-        digits = int(np.floor(np.log10(np.abs(model.size + 2)))) + 1
-        text = 'Fit results (V):\n{}\n{}\n{}\n\n'.format(
-            '\n'.join(['{}:   {} = {} +/- {}'.format(str(i).zfill(digits), name, *clip_val_with_unc(val, err))
-                       for i, (name, val, err) in enumerate(zip(model.names, popt, np.sqrt(np.diag(pcov))))]),
-            '{}:   FWHM = {} +/- {}'.format(model.size, *clip_val_with_unc(*self.get_fwhm(model, popt, pcov))),
-            '{}:   red. chi2 = {}'.format(model.size + 1, clip_val_with_unc(self.get_chi2(model, popt), 0.1)[0]))
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            digits = int(np.floor(np.log10(np.abs(model.size + 2)))) + 1
+            text = 'Fit results (V):\n{}\n{}\n{}\n\n'.format(
+                '\n'.join(['{}:   {} = {} +/- {}'.format(str(i).zfill(digits), name, *clip_val_with_unc(val, err))
+                           for i, (name, val, err) in enumerate(zip(model.names, popt, np.sqrt(np.diag(pcov))))]),
+                '{}:   FWHM = {} +/- {}'.format(model.size, *clip_val_with_unc(*self.get_fwhm(model, popt, pcov))),
+                '{}:   red. chi2 = {}'.format(model.size + 1, clip_val_with_unc(self.get_chi2(model, popt), 0.1)[0]))
 
-        if not isinstance(model, Amplifier):
-            pt, pc = self.get_freq_results(model, popt, pcov)
-            text += 'Fit results (MHz):\n{}\n{}'.format(
-                '\n'.join(['{}:   {} = {} +/- {}'.format(str(i).zfill(digits - 1), name, *clip_val_with_unc(val, err))
-                           for i, (name, val, err) in enumerate(zip(model.names, pt, np.sqrt(np.diag(pc))))]),
-                '{}:   FWHM = {} +/- {}'.format(model.size, *clip_val_with_unc(*self.get_fwhm(model, pt, pc))))
+            if not isinstance(model, Amplifier):
+                pt, pc = self.get_freq_results(model, popt, pcov)
+                text += 'Fit results (MHz):\n{}\n{}'.format(
+                    '\n'.join(['{}:   {} = {} +/- {}'.format(str(i).zfill(digits - 1), name, *clip_val_with_unc(val, err))
+                               for i, (name, val, err) in enumerate(zip(model.names, pt, np.sqrt(np.diag(pc))))]),
+                    '{}:   FWHM = {} +/- {}'.format(model.size, *clip_val_with_unc(*self.get_fwhm(model, pt, pc))))
 
         self.browser_fitresults.setText(text)
 

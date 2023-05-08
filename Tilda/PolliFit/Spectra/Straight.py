@@ -62,5 +62,5 @@ class Straight(object):
         :returns: (x in V, y in V) values with 'prec' number of points.
         """
         x = np.linspace(self.leftEdge(), self.rightEdge(), prec)
-        print('VALUES: ', x, self.evaluate(x, p))
+        # print('VALUES: ', x, self.evaluate(x, p))
         return x, self.evaluate(x, p)

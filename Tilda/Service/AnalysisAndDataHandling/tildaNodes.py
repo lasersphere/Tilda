@@ -26,7 +26,7 @@ from Tilda.PolliFit.Measurement.XMLImporter import XMLImporter
 from Tilda.PolliFit.SPFitter import SPFitter
 from Tilda.Service.AnalysisAndDataHandling.InfoHandler import InfoHandler as InfHandl
 from Tilda.Service.ProgramConfigs import Programs as Progs
-from Tilda.PolliFit.Spectra import Straight
+from Tilda.PolliFit.Spectra.Straight import Straight
 from Tilda.PolliFit.XmlOperations import xmlAddCompleteTrack
 from Tilda.PolliFit.polliPipe.node import Node
 
