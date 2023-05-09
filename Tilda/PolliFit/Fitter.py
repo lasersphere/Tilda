@@ -10,7 +10,7 @@ import sqlite3
 from scipy.stats import norm
 import itertools as it
 from PyQt5.QtCore import QObject, pyqtSignal
-from pycol.models import Linked
+from pycol.models import Linked, fit
 
 # noinspection PyUnresolvedReferences
 from Tilda.PolliFit.FitRoutines import curve_fit, const
@@ -274,6 +274,27 @@ class Fitter(QObject):
             return self.y[i] - y_model
 
     def fit_batch(self):
+        info = dict(warn=[], err=[], chi2=[])
+        popt, pcov = [], []
+        for i, (meas, model, x, y, yerr) in enumerate(zip(self.meas, self.models, self.x, self.y, self.yerr)):
+            _popt, _pcov, _info = fit.fit(
+                model, x, y, sigma_y=yerr, report=True, routine=self.config['routine'],
+                absolute_sigma=self.config['absolute_sigma'], guess_offset=self.config['guess_offset'],
+                mc_sigma=self.config['samples_mc'] if self.config['cov_mc'] else 0)
+            popt.append(_popt)
+            pcov.append(_pcov)
+            for k in ['warn', 'err']:
+                if _info[k]:
+                    info[k].append(i)
+        color = 'OKGREEN'
+        if len(info['warn']) > 0:
+            color = 'WARNING'
+        if len(info['err']) > 0:
+            color = 'FAIL'
+        print_colored(color, '\nFits completed, success in {} / {}.'.format(self.size - len(info['warn']), self.size))
+        return popt, pcov, info
+
+    def _fit_batch(self):
         """
         Fit all SpecData objects sequentially.
 
@@ -409,7 +430,7 @@ class Fitter(QObject):
             print_colored('FAIL', '\nLinked fit completed, failed.')
         elif len(warn) > 0:
             print_colored('WARNING', '\nLinked fit completed, warning.')
-        info = dict(warn=warn, errs=errs, chi2=chi2)
+        info = dict(warn=warn, err=errs, chi2=chi2)
         return popt, pcov, info
 
     def save_linked_fit(self):

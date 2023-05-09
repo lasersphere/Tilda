@@ -415,7 +415,7 @@ class SpectraFit:
         con = sqlite3.connect(self.db)
         cur = con.cursor()
         for i, (file, run) in enumerate(zip(self.files, self.runs)):
-            if i in info['errs']:
+            if i in info['err']:
                 continue
             pars = {self.fitter.models[i].names[j]: (pt, np.sqrt(pc[j]), self.fitter.models[i].fixes[j])
                     for j, (pt, pc) in enumerate(zip(popt[i], pcov[i]))}

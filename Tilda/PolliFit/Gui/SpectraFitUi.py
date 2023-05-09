@@ -836,7 +836,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.update_vals()
         self.tab_pars.blockSignals(False)
         self.mark_warn(info['warn'])
-        self.mark_errs(info['errs'])
+        self.mark_errs(info['err'])
 
     def fit_threaded(self):
         self.mark_loaded(self.get_selected_items())
@@ -862,7 +862,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.update_vals(suppress_plot=True)
         self.tab_pars.blockSignals(False)
         self.mark_warn(info['warn'])
-        self.mark_errs(info['errs'])
+        self.mark_errs(info['err'])
         if self.check_save_figure.isChecked():
             for i, path in enumerate(self.spectra_fit.file_paths):
                 self.spectra_fit.plot(index=i, clear=True, show=False, plot_path=os.path.split(path)[0])
