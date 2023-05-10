@@ -192,6 +192,11 @@ class OptionsUi(QtWidgets.QDialog, Ui_Dialog_Options):
     def close_doppler_config(self):
         for key in list(self.main.local_options.get_doppler_settings().keys()):
             self.main.set_option(f'DOPPLER:{key}', self.doppler_win.doppler_config[key])
+        self.main.set_option(f'FREQUENCY:arithmetic', self.doppler_win.doppler_config['freq_arith'])
+        self.main.set_option(f'FREQUENCY:freq_dict', self.doppler_win.doppler_config['freq_dict'])
+        self.main.set_option(f'VOLTAGE:arithmetic', self.doppler_win.doppler_config['volt_arith'])
+        self.main.set_option(f'VOLTAGE:volt_dict', self.doppler_win.doppler_config['volt_dict'])
+
         self.doppler_config = self.doppler_win.doppler_config
         self.doppler_win = None
 

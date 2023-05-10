@@ -40,7 +40,7 @@ class Options:
         if os.path.isfile(self.options_file_path):  # check if yaml-file already exists, read options.yaml
             logging.info('loading local TILDA settings from options.yaml')
             config_dict = yaml.safe_load(open(self.options_file_path))
-            self.config_dict |= config_dict
+            self.config_dict.update(config_dict)
             if self.config_dict != config_dict:
                 self.save_to_file()
         else:  # file does not exist yet, create new one and warn user.
@@ -173,7 +173,7 @@ class Options:
 
     def get_volt(self):
         """
-        use the settings from VOLTAGE section to determine the absolute aceleration voltage
+        use the settings from VOLTAGE section to determine the absolute acceleration voltage
         :return: Voltage in V
         """
         return eval(self.config_dict['VOLTAGE']['arithmetic'], {'__builtins__': None},

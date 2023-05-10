@@ -190,8 +190,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         ''' fit related '''
 
         self.action_fit.triggered.connect(self.fit_spectrum)
-        self.fit_config: dict[str, any] = {'model': Offset(NPeak(Voigt())), 'min': -np.inf, 'max': np.inf,
-                                           'doppler': setup_doppler_config()}
+        self.fit_config = {'model': Offset(NPeak(Voigt())), 'min': -np.inf, 'max': np.inf,
+                           'doppler': setup_doppler_config()}
         self.updated_doppler_config_from_db = False
 
         self.action_clear.triggered.connect(self.clear_fit)

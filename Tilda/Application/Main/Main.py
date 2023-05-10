@@ -459,6 +459,8 @@ class Main(QtCore.QObject):
         Save the options object (and possible updates that were made to it) to options.ini file.
         """
         self.local_options.save_to_file()
+        self.laser_freq_changed(self.local_options.get_abs_freq())
+        self.acc_volt_changed(self.local_options.get_volt())
 
     def calc_freq(self):
         """
