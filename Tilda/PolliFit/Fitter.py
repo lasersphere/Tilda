@@ -286,6 +286,7 @@ class Fitter(QObject):
             for k in ['warn', 'err']:
                 if _info[k]:
                     info[k].append(i)
+            info['chi2'].append(_info['chi2'])
         color = 'OKGREEN'
         if len(info['warn']) > 0:
             color = 'WARNING'
@@ -294,143 +295,30 @@ class Fitter(QObject):
         print_colored(color, '\nFits completed, success in {} / {}.'.format(self.size - len(info['warn']), self.size))
         return popt, pcov, info
 
-    def _fit_batch(self):
-        """
-        Fit all SpecData objects sequentially.
-
-        :returns: popt, pcov, info.
-        """
-        routine = self.get_routine()
-        warn = []
-        errs = []
-        chi2 = []
-        popt, pcov = [], []
-        for i, (meas, model, x, y, yerr) in enumerate(zip(self.meas, self.models, self.x, self.y, self.yerr)):
-            try:
-                if model.error:
-                    raise ValueError(model.error)
-                if model.type == 'Offset':
-                    model.update_on_call = False
-                    model.gen_offset_masks(x)
-                    if self.config['guess_offset']:
-                        model.guess_offset(x, y)
-                fixed, bounds = model.fit_prepare()
-                if self.config['cov_mc']:
-                    y_samples = np.random.normal(y, yerr, size=(self.config['samples_mc'], y.size))
-                    ps = np.array([routine(model, x, y_sample, p0=model.vals, p0_fixed=fixed, sigma=yerr,
-                                           absolute_sigma=self.config['absolute_sigma'], bounds=bounds, report=False,
-                                           maxfev=10000)[0] for y_sample in y_samples], dtype=float)
-                    pt = np.mean(ps, axis=0)
-                    pc = np.zeros((pt.size, pt.size))
-                    indices = np.array([i for i, fix in enumerate(model.fixes) if not fix])
-                    mask = (indices[:, None], indices)
-                    pc[mask] = np.cov(ps[:, indices], rowvar=False)
-                    pt = np.array(model.update_args(pt))
-                else:
-                    pt, pc = routine(model, x, y, p0=model.vals, p0_fixed=fixed, sigma=yerr,
-                                     absolute_sigma=self.config['absolute_sigma'], bounds=bounds, report=False,
-                                     maxfev=10000)
-                    pt = np.array(model.update_args(pt))
-                model.set_vals(pt, force=True)
-                chi2.append(self.reduced_chi2(i))  # Calculate chi2 after the vals are set.
-
-                print_colored('HEADER', '\nFit of file \'{}\':'.format(os.path.splitext(meas.file)[0]))
-                digits = int(np.floor(np.log10(np.abs(model.size)))) + 1
-                print('Optimized parameters:')
-                for j, (name, val, err) in enumerate(zip(model.names, pt, np.sqrt(np.diag(pc)))):
-                    print('{}:   {} = {} +/- {}'.format(str(j).zfill(digits), name, val, err))
-                print('\nCov. Matrix:')
-                print_cov(pc, normalize=True, decimals=2)
-                print('\nRed. chi2 = {}'.format(np.around(chi2[-1], decimals=2)))
-
-                popt.append(pt)
-                pcov.append(pc)
-                if np.any(np.isinf(pc)):
-                    warn.append(i)
-                    print_colored('WARNING', 'Failed to estimate uncertainties for file number {}.'.format(i + 1))
-                else:
-                    print_colored('OKGREEN', 'Successfully fitted file number {}.'.format(i + 1))
-            except (ValueError, RuntimeError) as e:
-                print_colored('FAIL', 'Error while fitting file number {}: {}.'.format(i + 1, e))
-                warn.append(i)
-                errs.append(i)
-                chi2.append(0.)
-                popt.append(np.array(model.vals))
-                pcov.append(np.zeros((popt[-1].size, popt[-1].size)))
-            if model.type == 'Offset':
-                model.update_on_call = True  # Reset the offset model to be updated on call.
-        color = 'OKGREEN'
-        if len(warn) > 0:
-            color = 'WARNING'
-        if len(errs) > 0:
-            color = 'FAIL'
-        print_colored(color, '\nFits completed, success in {} / {}.'.format(self.size - len(warn), self.size))
-        info = dict(warn=warn, errs=errs, chi2=chi2)
-        return popt, pcov, info
-
     def fit_summed(self):
         return None, None, {}
 
     def fit_linked(self):
-        """
-        Fit all SpecData objects simultaneously.
-
-        :returns: popt, pcov, info.
-        """
-        routine = self.get_routine()
+        info = dict(warn=[], err=[], chi2=[])
         model = Linked(self.models)
-        warn = []
-        errs = []
-        y, yerr = np.concatenate(self.y, axis=0), np.concatenate(self.yerr, axis=0)
-        try:
-            if model.error:
-                raise ValueError(model.error)
-            for _model, _x, _y in zip(self.models, self.x, self.y):
-                # Handle offsets for all linked models.
-                if _model.type == 'Offset':
-                    _model.update_on_call = False
-                    _model.gen_offset_masks(_x)
-                    if self.config['guess_offset']:
-                        _model.guess_offset(_x, _y)
-            model.inherit_vals()  # Inherit values of the linked models afterwards.
-            fixed, bounds = model.fit_prepare()
-            # curve_fit wants to convert lists and tuples to arrays -> Use custom list type.
-            pt, pc = routine(model, Xlist(self.x), y, p0=model.vals, p0_fixed=fixed, sigma=yerr,
-                             absolute_sigma=self.config['absolute_sigma'], bounds=bounds, report=False)
-            pt = np.array(model.update_args(pt))
-            model.set_vals(pt, force=True)  # Set the vals of the model (auto sets the vals of the linked models).
-            chi2 = self.reduced_chi2()  # Calculate chi2 after the vals are set.
+        _popt, _pcov, _info = fit.fit(
+            model, self.x, self.y, sigma_y=self.yerr, report=True, routine=self.config['routine'],
+            absolute_sigma=self.config['absolute_sigma'], guess_offset=self.config['guess_offset'],
+            mc_sigma=self.config['samples_mc'] if self.config['cov_mc'] else 0)
 
-            print_colored('HEADER', '\nLinked fit of files {}'
-                          .format([os.path.splitext(meas.file)[0] for meas in self.meas]))
-            digits = int(np.floor(np.log10(np.abs(model.size)))) + 1
-            for i, (name, val, err) in enumerate(zip(model.names, pt, np.sqrt(np.diag(pc)))):
-                print('{}:   {} = {} +/- {}'.format(str(i).zfill(digits), name, val, err))
-            print('\nCov. Matrix:')
-            print_cov(pc, normalize=True, decimals=2)
-            print('\nRed. chi2:')
-            for i, _chi2 in enumerate(chi2):
-                print('{}:   {}'.format(str(i).zfill(int(np.log10(self.size))), np.around(_chi2, decimals=2)))
+        popt = [_popt[_slice] for _slice in model.slices]
+        pcov = [_pcov[_slice, _slice] for _slice in model.slices]
+        for k in ['warn', 'err']:
+            if _info[k]:
+                info[k] = list(range(self.size))
+        info['chi2'] = [self.reduced_chi2(i) for i in range(self.size)]
 
-            popt = [pt[_slice] for _slice in model.slices]
-            pcov = [pc[_slice, _slice] for _slice in model.slices]
-        except (ValueError, RuntimeError) as e:
-            print_colored('FAIL', 'Error while fitting linked files: {}.'.format(e))
-            warn = list(range(self.size))  # Issue warnings for all files.
-            errs = list(range(self.size))
-            chi2 = [0., ] * self.size
-            popt = [np.array(model.vals) for model in self.models]
-            pcov = [np.zeros((popt[-1].size, popt[-1].size)) for _ in self.models]
-        for _model in self.models:
-            if _model.type == 'Offset':
-                _model.update_on_call = True  # Reset all offset models to be updated on call.
-        if len(warn) == len(errs) == 0:
-            print_colored('OKGREEN', '\nLinked fit completed, success.')
-        elif len(errs) > 0:
-            print_colored('FAIL', '\nLinked fit completed, failed.')
-        elif len(warn) > 0:
-            print_colored('WARNING', '\nLinked fit completed, warning.')
-        info = dict(warn=warn, err=errs, chi2=chi2)
+        color = 'OKGREEN'
+        if len(info['warn']) > 0:
+            color = 'WARNING'
+        if len(info['err']) > 0:
+            color = 'FAIL'
+        print_colored(color, '\nLinked fit completed, success in {} / {}.'.format(self.size - len(info['warn']), self.size))
         return popt, pcov, info
 
     def save_linked_fit(self):
@@ -643,7 +531,7 @@ class Fitter(QObject):
             chi2 = [0., ] * self.size
             popt = [np.array(model.vals) for model in self.models]
             pcov = [np.zeros((popt[-1].size, popt[-1].size)) for _ in self.models]
-            self.popt, self.pcov, self.info = popt, pcov, dict(warn=warn, errs=errs, chi2=chi2)
+            self.popt, self.pcov, self.info = popt, pcov, dict(warn=warn, err=errs, chi2=chi2)
             return
 
         iterate = self.config['col_acol_config']['iterate']
@@ -678,13 +566,13 @@ class Fitter(QObject):
                       'Error msg: {}'.format(e))
                 return
         files = [os.path.splitext(meas.file)[0] for meas in self.meas]
-        for file, model, _popt, _pcov, chi2 in zip(files, self.models, self.popt, self.pcov, self.info['chi2']):
+        for j, (file, model, _popt, _pcov, chi2) in enumerate(zip(files, self.models, self.popt, self.pcov, self.info['chi2'])):
             with open(os.path.join(path, '{}_{}_{}_fit.txt'.format(db, file, self.run)), 'w') as f:
                 f.write('# File: \'{}\'\n'.format(file))
                 f.write('# Run: \'{}\'\n'.format(self.run))
                 model_description = model.description
                 if self.config['linked']:
-                    model_description = 'Linked[0].{}'.format(model_description)
+                    model_description = 'Linked[{}].{}'.format(j, model_description)
                 f.write('# Model: {}\n'.format(model_description))
                 f.write('# Red. chi2: {}\n# \n'.format(np.around(chi2, decimals=2)))
                 f.write('# Index, Parameter, Value, Uncertainty, Fixed, Linked\n')
