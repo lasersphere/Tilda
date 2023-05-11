@@ -298,6 +298,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         ''' preset bin/error bar mode for all graphs '''
         self.stepMode = self.actionshow_bins.isChecked()
         self.actionshow_bins.triggered.connect(self.update_show_bins)
+        self.break_points = None
 
         ''' update sum  '''
         self.sum_scaler_changed()
@@ -673,6 +674,11 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 st = datetime.now()
                 valid_data = False
                 self.spec_data = deepcopy(spec_data)
+                try:
+                    self.break_points = [_x.size for _x in self.spec_data.x]
+                    self.break_points = [sum(self.break_points[:(i+1)]) for i in range(len(self.break_points))]
+                except Exception as e:
+                    print(e)
 
                 update_time_ms = self.allowed_update_time_ms
                 max_calls_without_plot = 5
@@ -822,7 +828,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 self.menu_track.setTitle(tr_list[0].text() + '\tCtrl+T  ')
                 self.menu_track.blockSignals(False)
                 self.sum_plt_data = Pg.plot_std(self.sum_x, self.sum_y, self.sum_err, self.sum_plt_itm,
-                                                self.err_sum_plt_item, stepMode=self.stepMode)
+                                                self.err_sum_plt_item, stepMode=self.stepMode,
+                                                break_points=self.break_points)
                 # self.sum_plt_data = self.sum_plt_itm.plot(
                 #     Pg.convert_xaxis_for_step_mode(self.sum_x), self.sum_y, stepMode=True, pen='k')
                 if self.subscribe_as_live_plot:
@@ -831,7 +838,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                     self.sum_plt_itm.addItem(self.sum_current_step_line, ignoreBounds=True)
             else:
                 Pg.set_data_std(self.sum_x, self.sum_y, self.sum_err, self.sum_plt_data, self.err_sum_plt_item,
-                                stepMode=self.stepMode)
+                                stepMode=self.stepMode, break_points=self.break_points)
             self.sum_plt_itm.setLabel('bottom', spec_data.x_units.value)
 
     def update_tres_plot(self, spec_data):
@@ -841,7 +848,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             gates = self.spec_data.softw_gates[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
             # x_range = (float(np.min(spec_data.x[self.tres_sel_tr_ind])), np.max(spec_data.x[self.tres_sel_tr_ind]))
             x_copy = deepcopy(spec_data.x[self.tres_sel_tr_ind])
-            x_copy = Pg.convert_xaxis_for_step_mode(x_copy)
+            x_copy = Pg.convert_xaxis_for_step_mode(x_copy, break_points=None)
             x_range = (x_copy[0], x_copy[-1])
             x_scale = np.mean(np.ediff1d(spec_data.x[self.tres_sel_tr_ind]))
             y_range = (np.min(spec_data.t[self.tres_sel_tr_ind]), np.max(spec_data.t[self.tres_sel_tr_ind]))
@@ -913,13 +920,16 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 v_proj_x, v_proj_y, v_proj_err = \
                     spec_data.getArithSpec([self.tres_sel_sc_ind, ], self.tres_sel_tr_ind, eval_on=False)
                 sum_x, sum_y, sum_err = spec_data.getArithSpec(self.sum_scaler, self.tres_sel_tr_ind, self.function)
+                break_points = self.break_points if self.tres_sel_tr_ind == -1 else None
 
                 if self.t_proj_plt is None:
                     self.t_proj_plt = self.t_proj_plt_itm.plot(t_proj_x, t_proj_y, pen='k')
-                    self.sum_proj_plt_data = Pg.plot_std(sum_x, sum_y, sum_err, self.sum_proj_plt_itm,
-                                                         self.err_sum_proj_plt_item, stepMode=self.stepMode)
-                    self.v_proj_plt = Pg.plot_std(v_proj_x, v_proj_y, v_proj_err, self.v_proj_pltitem,
-                                                  self.err_v_proj_plt_item, stepMode=self.stepMode, color='b')
+                    self.sum_proj_plt_data = Pg.plot_std(
+                        sum_x, sum_y, sum_err, self.sum_proj_plt_itm, self.err_sum_proj_plt_item,
+                        stepMode=self.stepMode, break_points=break_points)
+                    self.v_proj_plt = Pg.plot_std(
+                        v_proj_x, v_proj_y, v_proj_err, self.v_proj_pltitem, self.err_v_proj_plt_item,
+                        stepMode=self.stepMode, color='b')
                     self.v_proj_pltitem.vb.addItem(self.v_proj_plt)
 
                     if self.subscribe_as_live_plot:
@@ -938,10 +948,12 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                     self.t_proj_plt_itm.addItem(self.t_max_line)
                 else:
                     self.t_proj_plt.setData(t_proj_x, t_proj_y)
-                    Pg.set_data_std(self.sum_x, self.sum_y, self.sum_err, self.sum_proj_plt_data,
-                                    self.err_sum_proj_plt_item, stepMode=self.stepMode, color='b')
-                    Pg.set_data_std(v_proj_x, v_proj_y, v_proj_err, self.v_proj_plt,
-                                    self.err_v_proj_plt_item, stepMode=self.stepMode)
+                    Pg.set_data_std(
+                        self.sum_x, self.sum_y, self.sum_err, self.sum_proj_plt_data, self.err_sum_proj_plt_item,
+                        stepMode=self.stepMode, break_points=self.break_points, color='b')
+                    Pg.set_data_std(
+                        v_proj_x, v_proj_y, v_proj_err, self.v_proj_plt, self.err_v_proj_plt_item,
+                        stepMode=self.stepMode)
                     self.v_min_line.setValue(gates[0])
                     self.v_max_line.setValue(gates[1])
                     self.t_min_line.setValue(gates[2])
@@ -970,8 +982,9 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.comboBox_all_pmts_sel_tr.blockSignals(False)
             self.add_all_pmt_plot()
 
+        break_points = self.break_points if self.all_pmts_sel_tr == -1 else None
         Pg.plot_all_sc_new(self.all_pmts_widg_plt_item_list, spec_data, self.all_pmts_sel_tr,
-                           self.function, stepMode=self.stepMode)
+                           self.function, stepMode=self.stepMode, break_points=break_points)
 
         self.all_pmts_widg_plt_item_list[-1]['pltItem'].setLabel('bottom', spec_data.x_units.value)
         self.all_pmts_widg_plt_item_list[0]['pltItem'].setLabel('top', spec_data.x_units.value)

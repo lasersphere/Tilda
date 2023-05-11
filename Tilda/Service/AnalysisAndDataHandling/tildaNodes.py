@@ -2442,7 +2442,7 @@ class NSendnOfCompletedStepsViaQtSignal(Node):
         # ergo or go?
         acq_on_file_in_dict = isinstance(
             self.Pipeline.pipeData['isotopeData'].get('continuedAcquisitonOnFile', False), str)
-        if acq_on_file_in_dict:  # go -> keep the number of steps but only emit the ones from the acutal scan.
+        if acq_on_file_in_dict:  # go -> keep the number of steps but only emit the ones from the actual scan.
             self.number_of_steps_at_start = self.Pipeline.pipeData[track_name]['nOfCompletedSteps']
         else:  # ergo -> set all number of completed steps to 0
             self.number_of_steps_at_start = 0

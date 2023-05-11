@@ -128,6 +128,9 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         if ergo:
             # if its an ergo we do not want any old readings of dmms or triton devs in the scandict
             Cfg._main_instance.remove_old_dmm_triton_from_scan_pars(self.active_iso)
+            for i in range(self.listWidget.count()):
+                t = self.listWidget.item(i).text()
+                Cfg._main_instance.scan_pars[self.active_iso][t]['nOfCompletedSteps'] = 0
         self.wrap_open_live_plot_win()
         Cfg._main_instance.start_scan(self.active_iso)
 

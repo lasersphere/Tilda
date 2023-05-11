@@ -671,7 +671,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
                         else:
                             self.stop_highlight = Pgplot.pg.LinearRegionItem(
                                 [stop_time_start, stop_time_end], movable=False, brush=(255, 0, 0, 50))
-                        self.gr_v_plt_itm.addItem(self.stop_highlight, ignoreBounds=True)
+                            self.gr_v_plt_itm.addItem(self.stop_highlight, ignoreBounds=True)
                     for each in self.highlight_line_list:  # first remove all highlights
                         logging.debug('removing ' + str(each))
                         self.gr_v_plt_itm.removeItem(each)

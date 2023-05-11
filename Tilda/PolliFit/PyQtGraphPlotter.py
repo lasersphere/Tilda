@@ -51,7 +51,7 @@ def plot_spec_data(spec_data, sc, tr, plot_item=None, pen='k'):
         plot_item.plot(x, y, pen=pen)
 
 
-def plot_std(x, y, err, std_plt, err_plt, stepMode=True, color='k'):
+def plot_std(x, y, err, std_plt, err_plt, stepMode=True, break_points=None, color='k'):
     """
     Create and plot new plotData in a standard pyqtgraph x-y-plot.
 
@@ -61,13 +61,16 @@ def plot_std(x, y, err, std_plt, err_plt, stepMode=True, color='k'):
     :param std_plt: The plot item for the values.
     :param err_plt: The plot item for the uncertainties.
     :param stepMode: Whether to plot bins (without uncertainties) or points with error bars.
+    :param break_points: The points at which to separate the histogram if stepMode.
     :param color: The color of the data.
     :return: None.
     """
     if isinstance(stepMode, bool):
         stepMode = 'center' if stepMode else None
     if stepMode is not None:
-        std_data = std_plt.plot(convert_xaxis_for_step_mode(x), y, stepMode=stepMode, symbol=None, pen=color)
+        std_data = std_plt.plot(convert_xaxis_for_step_mode(x, break_points=break_points),
+                                convert_yaxis_for_step_mode(y, break_points=break_points),
+                                stepMode=stepMode, symbol=None, pen=color)
         err_plt.setData(x=[], y=[], height=None)
     else:
         std_data = std_plt.plot(x, y, stepMode=None, symbol='o', pen=None, symbolBrush=pg.mkBrush(color), symbolSize=5)
@@ -75,7 +78,7 @@ def plot_std(x, y, err, std_plt, err_plt, stepMode=True, color='k'):
     return std_data
 
 
-def set_data_std(x, y, err, std_plt, err_plt, stepMode=True, color='k'):
+def set_data_std(x, y, err, std_plt, err_plt, stepMode=True, break_points=None, color='k'):
     """
     Set new data in a standard pyqtgraph x-y-plot.
 
@@ -85,13 +88,16 @@ def set_data_std(x, y, err, std_plt, err_plt, stepMode=True, color='k'):
     :param std_plt: The plot item for the values.
     :param err_plt: The plot item for the uncertainties.
     :param stepMode: Whether to plot bins (without uncertainties) or points with error bars.
+    :param break_points: The points at which to separate the histogram if stepMode.
     :param color: The color of the data.
     :return: None.
     """
     if isinstance(stepMode, bool):
         stepMode = 'center' if stepMode else None
     if stepMode is not None:
-        std_plt.setData(convert_xaxis_for_step_mode(x), y, stepMode=stepMode, symbol=None, pen=color)
+        std_plt.setData(convert_xaxis_for_step_mode(x, break_points=break_points),
+                        convert_yaxis_for_step_mode(y, break_points=break_points),
+                        stepMode=stepMode, symbol=None, pen=color)
         err_plt.setData(x=[], y=[], height=None)
     else:
         std_plt.setData(x, y, stepMode=None, symbol='o', pen=None, symbolBrush=pg.mkBrush(color), symbolSize=5)
@@ -214,7 +220,7 @@ def create_plot_for_all_sc(target_layout, pmt_list, slot_for_mouse_move, max_rat
     return return_list
 
 
-def plot_all_sc_new(list_of_widgets_etc, spec_data, tr, func, stepMode=True):
+def plot_all_sc_new(list_of_widgets_etc, spec_data, tr, func, stepMode=True, break_points=None):
     """
     create plots in the all pmts tab
     :param list_of_widgets_etc: list of widgest, containig widgets to be plotted
@@ -222,6 +228,7 @@ def plot_all_sc_new(list_of_widgets_etc, spec_data, tr, func, stepMode=True):
     :param tr: list of int, used tracks, -1 for all
     :param func: str, users function
     :param stepMode: Whether to plot bins (without uncertainties) or points with error bars.
+    :param break_points: The points at which to separate the histogram if stepMode.
     """
     for val in list_of_widgets_etc:
         sc = val['indList']  # which scalers are needed for this plot?
@@ -236,14 +243,14 @@ def plot_all_sc_new(list_of_widgets_etc, spec_data, tr, func, stepMode=True):
         # x, y, err = spec_data.calcSpec(func, tr, sc, eval_on)   # calc arithmetic plot
         x, y, err = spec_data.getArithSpec(sc, tr, func, eval_on=eval_on)
 
-        set_data_std(x, y, err, plt_data_itm, plt_err_itm, stepMode=stepMode, color=color)
+        set_data_std(x, y, err, plt_data_itm, plt_err_itm, stepMode=stepMode, break_points=break_points, color=color)
 
         # if stepMode:
         #     x = convert_xaxis_for_step_mode(deepcopy(x))
         # plt_data_itm.setData(x, y, stepMode=stepMode)
 
 
-def plot_all_sc(list_of_widgets_etc, spec_data, tr, stepMode=True):
+def plot_all_sc(list_of_widgets_etc, spec_data, tr, stepMode=True, break_points=None):
     # print('plotting all pmts in %s' % list_of_widgets_etc)
     for val in list_of_widgets_etc:
         sc = val['indList']
@@ -252,18 +259,38 @@ def plot_all_sc(list_of_widgets_etc, spec_data, tr, stepMode=True):
         # x, y, err = spec_data.getArithSpec(sc, tr)
         if isinstance(stepMode, bool):
             if stepMode:
-                x = convert_xaxis_for_step_mode(deepcopy(x))
+                x = convert_xaxis_for_step_mode(x, break_points=break_points)
+                y = convert_yaxis_for_step_mode(y, break_points=break_points)
                 stepMode = 'center'
             else:
                 stepMode = None
         plt_data_itm.setData(x, y, stepMode=stepMode)
 
 
-def convert_xaxis_for_step_mode(x_axis):
-    x_axis_step = np.mean(np.ediff1d(x_axis))
-    x_axis = np.append(x_axis, [x_axis[-1] + x_axis_step])
-    x_axis += -0.5 * abs(x_axis_step)
-    return x_axis
+def convert_xaxis_for_step_mode(x_axis, break_points=None):
+    # Do not use the legacy function for more than a single track.
+    if break_points is None:
+        x_axis_step = np.mean(np.ediff1d(x_axis))
+        x_axis = np.append(x_axis, [x_axis[-1] + x_axis_step])
+        x_axis += -0.5 * abs(x_axis_step)
+        return x_axis
+    i = 0
+    x_axes = []
+    for j in break_points:
+        _x_axis = x_axis[slice(i, j, 1)]
+        _x_axis_step = np.mean(np.ediff1d(_x_axis))
+        _x_axis = np.append(_x_axis, [_x_axis[-1] + _x_axis_step])
+        _x_axis += -0.5 * abs(_x_axis_step)
+        x_axes.append(_x_axis)
+        i = j
+    return np.concatenate(x_axes, axis=0)
+
+
+def convert_yaxis_for_step_mode(y_axis, break_points=None):
+    # Do not use the legacy function for more than a single track.
+    if break_points is None or len(break_points) < 2:
+        return y_axis
+    return np.insert(y_axis, break_points[:-1], np.min(y_axis))
 
 
 def create_viewbox():
