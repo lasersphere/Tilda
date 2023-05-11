@@ -64,11 +64,13 @@ def plot_std(x, y, err, std_plt, err_plt, stepMode=True, color='k'):
     :param color: The color of the data.
     :return: None.
     """
-    if stepMode:
-        std_data = std_plt.plot(convert_xaxis_for_step_mode(x), y, stepMode=True, symbol=None, pen=color)
+    if isinstance(stepMode, bool):
+        stepMode = 'center' if stepMode else None
+    if stepMode is not None:
+        std_data = std_plt.plot(convert_xaxis_for_step_mode(x), y, stepMode=stepMode, symbol=None, pen=color)
         err_plt.setData(x=[], y=[], height=None)
     else:
-        std_data = std_plt.plot(x, y, stepMode=False, symbol='o', pen=None, symbolBrush=pg.mkBrush(color), symbolSize=5)
+        std_data = std_plt.plot(x, y, stepMode=None, symbol='o', pen=None, symbolBrush=pg.mkBrush(color), symbolSize=5)
         err_plt.setData(x=x, y=y, height=2 * err, beam=(x[1] - x[0]) / 2, pen=color)
     return std_data
 
@@ -86,11 +88,13 @@ def set_data_std(x, y, err, std_plt, err_plt, stepMode=True, color='k'):
     :param color: The color of the data.
     :return: None.
     """
-    if stepMode:
-        std_plt.setData(convert_xaxis_for_step_mode(x), y, stepMode=True, symbol=None, pen=color)
+    if isinstance(stepMode, bool):
+        stepMode = 'center' if stepMode else None
+    if stepMode is not None:
+        std_plt.setData(convert_xaxis_for_step_mode(x), y, stepMode=stepMode, symbol=None, pen=color)
         err_plt.setData(x=[], y=[], height=None)
     else:
-        std_plt.setData(x, y, stepMode=False, symbol='o', pen=None, symbolBrush=pg.mkBrush(color), symbolSize=5)
+        std_plt.setData(x, y, stepMode=None, symbol='o', pen=None, symbolBrush=pg.mkBrush(color), symbolSize=5)
         err_plt.setData(x=x, y=y, height=2 * err, beam=(x[1] - x[0]) / 2, pen=color)
 
 
@@ -246,8 +250,12 @@ def plot_all_sc(list_of_widgets_etc, spec_data, tr, stepMode=True):
         plt_data_itm = val['pltDataItem']
         x, y, err = spec_data.getArithSpec(sc, tr)
         # x, y, err = spec_data.getArithSpec(sc, tr)
-        if stepMode:
-            x = convert_xaxis_for_step_mode(deepcopy(x))
+        if isinstance(stepMode, bool):
+            if stepMode:
+                x = convert_xaxis_for_step_mode(deepcopy(x))
+                stepMode = 'center'
+            else:
+                stepMode = None
         plt_data_itm.setData(x, y, stepMode=stepMode)
 
 
@@ -267,6 +275,8 @@ def create_plotitem():
 
 
 def create_plot_data_item(x, y, pen='b', stepMode=False):
+    if isinstance(stepMode, bool):
+        stepMode = 'center' if stepMode else None
     return pg.PlotDataItem(x, y, pen=pen, stepMode=stepMode)
 
 
