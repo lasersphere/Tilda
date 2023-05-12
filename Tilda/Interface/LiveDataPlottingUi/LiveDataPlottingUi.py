@@ -1597,6 +1597,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         if i_x0 == -1:
             return pt, pc
         pt[i_x0] = volt_to_rel_freq(u - (a + b * popt[i_x0]), q, m, f, 0., col)
+        pc[i_x0] = abs(volt_to_rel_freq(u - (a + b * (popt[i_x0] + np.sqrt(pcov[i_x0, i_x0]) / 2)), q, m, f, 0., col)
+                       - volt_to_rel_freq(u - (a + b * (popt[i_x0] - np.sqrt(pcov[i_x0, i_x0]) / 2)), q, m, f, 0., col)) ** 2
         for par in {'sigma', 'gamma', 'Gamma'}:
             i = model.p.get(par, -1)
             if i != -1:
