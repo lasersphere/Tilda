@@ -152,6 +152,21 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.action_update.triggered.connect(functools.partial(self.update_all_plots, None, True))
         # QtWidgets.QShortcut(QtGui.QKeySequence("CTRL+S"), self, self.export_screen_shot)  # Deprecated
 
+        ''' preset norm of all graphs '''
+        self.scan_prog_array = None
+        self.norm_mode = '1'
+        self.norm_label = {'1': 'cts', 'scans': 'cts/scan'}
+        self.actionidentity.triggered.connect(self.toggle_norm_menu)
+        self.actionscans.triggered.connect(self.toggle_norm_menu)
+        QtWidgets.QShortcut(QtGui.QKeySequence('Ctrl+N'), self, functools.partial(self.next_norm, True))
+        QtWidgets.QShortcut(QtGui.QKeySequence('Ctrl+Shift+N'), self, functools.partial(self.next_norm, False))
+        self.menunorm.setTitle(self.menunorm.title() + '\tCtrl+N  ')
+
+        ''' preset bin/error bar mode for all graphs '''
+        self.stepMode = self.actionshow_bins.isChecked()
+        self.actionshow_bins.triggered.connect(self.update_show_bins)
+        self.break_points = None
+
         ''' sum related '''
         self.add_sum_plot()
         self.sum_x, self.sum_y, self.sum_err = None, None, None  # storage of the sum plotting values
@@ -286,20 +301,6 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         ''' font size graphs '''
         self.actionGraph_font_size.triggered.connect(self.get_graph_fontsize)
 
-        ''' preset norm of all graphs '''
-        self.scan_prog_array = None
-        self.norm_mode = '1'
-        self.actionidentity.triggered.connect(self.toggle_norm_menu)
-        self.actionscans.triggered.connect(self.toggle_norm_menu)
-        QtWidgets.QShortcut(QtGui.QKeySequence('Ctrl+N'), self, functools.partial(self.next_norm, True))
-        QtWidgets.QShortcut(QtGui.QKeySequence('Ctrl+Shift+N'), self, functools.partial(self.next_norm, False))
-        self.menunorm.setTitle(self.menunorm.title() + '\tCtrl+N  ')
-
-        ''' preset bin/error bar mode for all graphs '''
-        self.stepMode = self.actionshow_bins.isChecked()
-        self.actionshow_bins.triggered.connect(self.update_show_bins)
-        self.break_points = None
-
         ''' update sum  '''
         self.sum_scaler_changed()
         logging.info('LiveDataPlottingUi opened ... ')
@@ -372,7 +373,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
     def add_sum_plot(self):
         """ sum plot on the sum tab """
-        self.sum_wid, self.sum_plt_itm = Pg.create_x_y_widget()
+        self.sum_wid, self.sum_plt_itm = Pg.create_x_y_widget(y_label=self.norm_label.get(self.norm_mode, 'cts'))
         self.err_sum_plt_item = Pg.create_error_item()
         self.fit_data_item = Pg.create_plot_data_item(
             [], [], Pg.create_pen('b', width=2), stepMode=False)
@@ -432,7 +433,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         # self.sum_proj_plt_itm.addItem(self.v_proj_pltitem)
         self.sum_proj_plt_itm.getAxis('right').linkToView(self.v_proj_pltitem.vb)
         # self.sum_proj_plt_itm.getAxis('right').linkToView(self.v_proj_pltitem)
-        self.sum_proj_plt_itm.getAxis('right').setLabel('cts', color='k')
+        self.sum_proj_plt_itm.getAxis('right').setLabel(self.norm_label.get(self.norm_mode, 'cts'), color='k')
         pen = Pg.pg.mkPen(color='#0000ff', width=1)  # make the sum label and tick blue
         self.sum_proj_plt_itm.getAxis('left').setPen(pen)
         self.updateViews()
@@ -513,8 +514,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.all_pmts_widg_plt_item_list = Pg.create_plot_for_all_sc(
             self.all_pmts_plot_layout, self.spec_data.active_pmt_list[self.all_pmts_sel_tr],
             self.mouse_moved, max_rate, plot_sum=self.spec_data.seq_type != 'kepco',
-            inf_line=self.subscribe_as_live_plot
-        )
+            inf_line=self.subscribe_as_live_plot, y_label=self.norm_label.get(self.norm_mode, 'cts'))
         if not self.actionshow_bins.isChecked():  # Add errorbar plot if self.actionshow_bins is already unchecked.
             self.stepMode = False
             for p in self.all_pmts_widg_plt_item_list:
@@ -840,6 +840,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 Pg.set_data_std(self.sum_x, self.sum_y, self.sum_err, self.sum_plt_data, self.err_sum_plt_item,
                                 stepMode=self.stepMode, break_points=self.break_points)
             self.sum_plt_itm.setLabel('bottom', spec_data.x_units.value)
+            self.sum_plt_itm.setLabel('left', self.norm_label.get(self.norm_mode, 'cts'))
 
     def update_tres_plot(self, spec_data):
         """ update the time resolved plot including the roi """
@@ -959,6 +960,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                     self.t_min_line.setValue(gates[2])
                     self.t_max_line.setValue(gates[3])
                 self.sum_proj_plt_itm.setLabel('bottom', spec_data.x_units.value)
+                self.sum_proj_plt_itm.setLabel('right', self.norm_label.get(self.norm_mode, 'cts'))
 
         except SyntaxError:
             logging.info('Your user function is invalid')
@@ -988,6 +990,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
         self.all_pmts_widg_plt_item_list[-1]['pltItem'].setLabel('bottom', spec_data.x_units.value)
         self.all_pmts_widg_plt_item_list[0]['pltItem'].setLabel('top', spec_data.x_units.value)
+        [each['pltItem'].setLabel('left', 'sc{} ({})'.format(i, self.norm_label.get(self.norm_mode, 'cts')))
+         for i, each in enumerate(self.all_pmts_widg_plt_item_list[:-1])]
+        self.all_pmts_widg_plt_item_list[-1]['pltItem'].setLabel(
+            'left', 'sum ({})'.format(self.norm_label.get(self.norm_mode, 'cts')))
 
         if autorange_pls:
             [each['pltItem'].autoRange() for each in self.all_pmts_widg_plt_item_list]

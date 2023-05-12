@@ -146,7 +146,8 @@ def create_x_y_widget(do_not_show_label=None, x_label='line voltage', y_label='c
     return widg, plt_item
 
 
-def create_plot_for_all_sc(target_layout, pmt_list, slot_for_mouse_move, max_rate, plot_sum=True, inf_line=True):
+def create_plot_for_all_sc(
+        target_layout, pmt_list, slot_for_mouse_move, max_rate, plot_sum=True, inf_line=True, y_label='cts'):
     """
 
     this will add a pyqtgraph widget for each scaler and an additional one for the sum to the target layout.
@@ -156,6 +157,7 @@ def create_plot_for_all_sc(target_layout, pmt_list, slot_for_mouse_move, max_rat
     :param max_rate:
     :param plot_sum:
     :param inf_line:
+    :param y_label:
     :return: list, of dicts, {'widget', 'proxy', 'vertLine', 'indList', 'pltDataItem', 'name', 'pltItem', 'fitLine'}
      with sum at the last position.
     """
@@ -165,7 +167,7 @@ def create_plot_for_all_sc(target_layout, pmt_list, slot_for_mouse_move, max_rat
         label_list = ['top', 'right', 'bottom']
         if not plot_sum:  # if the sum is not plotted, the last pmt must hold the label
             label_list = label_list if sc_ind < len(pmt_list) - 1 else ['top', 'right']
-        widg, plt_item = create_x_y_widget(do_not_show_label=label_list, y_label='cts sc%s' % sc_name)
+        widg, plt_item = create_x_y_widget(do_not_show_label=label_list, y_label='sc{} ({})'.format(sc_name, y_label))
         plt_proxy = create_proxy(signal=plt_item.scene().sigMouseMoved,
                                  slot=functools.partial(slot_for_mouse_move, plt_item.vb, False),
                                  rate_limit=max_rate)
@@ -192,7 +194,8 @@ def create_plot_for_all_sc(target_layout, pmt_list, slot_for_mouse_move, max_rat
         return_list.append(singl_dict)
         target_layout.addWidget(widg)
     if plot_sum:
-        sum_wid, sum_plt_item = create_x_y_widget(do_not_show_label=['top', 'right'], y_label='cts sum')
+        sum_wid, sum_plt_item = create_x_y_widget(
+            do_not_show_label=['top', 'right'], y_label='sum ({})'.format(y_label))
         sum_proxy = create_proxy(signal=sum_plt_item.scene().sigMouseMoved,
                                  slot=functools.partial(slot_for_mouse_move, sum_plt_item.vb, False),
                                  rate_limit=max_rate)
