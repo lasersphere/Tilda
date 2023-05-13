@@ -15,27 +15,12 @@ from pycol.models import Linked, fit
 # noinspection PyUnresolvedReferences
 from Tilda.PolliFit.FitRoutines import curve_fit, const
 from Tilda.PolliFit import Physics as Ph
-from Tilda.PolliFit.Tools import print_colored, print_cov
+from Tilda.PolliFit.Tools import print_colored
 
 
 COL_ACOL_CONFIG = {'enabled': False, 'rule': 'acca / caac', 'parameter': 'center',
                    'iterate': 3, 'volt': 1., 'mhz': 1., 'save_voltage': True, 'mc': False, 'mc_size': 100000,
                    'show_results': False, 'save_results': True, 'file': 'ColAcol_{db}_{run}.txt'}
-
-
-class Xlist:  # Custom list to trick 'curve_fit' for linked fitting of files with different x-axis sizes.
-    def __init__(self, x):
-        self.x = x
-
-    def __iter__(self):
-        for _x in self.x:
-            yield _x
-
-    def __getitem__(self, key):
-        return self.x[key]
-
-    def __setitem__(self, key, value):
-        self.x[key] = value
 
 
 class Fitter(QObject):

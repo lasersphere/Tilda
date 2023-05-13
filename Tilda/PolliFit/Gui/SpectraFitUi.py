@@ -2,16 +2,13 @@
 Created on 18.02.2022
 
 @author: Patrick Mueller
-
-TODO: Changing the model config, immediate action?
-TODO: Arithmetics.
 """
 
 import os
 import ast
 from copy import deepcopy
 # noinspection PyUnresolvedReferences
-from numpy import inf, Inf, infty, Infinity, PINF
+from numpy import inf
 from PyQt5 import QtWidgets, QtCore
 # noinspection PyProtectedMember
 from matplotlib.axes._base import _process_plot_format
@@ -26,6 +23,7 @@ from Tilda.PolliFit.Fitter import COL_ACOL_CONFIG
 from Tilda.PolliFit import TildaTools as TiTs
 
 colors = ['b', 'g', 'r', 'x', 'm', 'y', 'k']
+inf_str = ['PINF', 'Infinity', 'infty', 'Inf', 'inf']
 
 
 class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
@@ -226,6 +224,8 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         if item is not None:
             item.setForeground(QtCore.Qt.GlobalColor.black)
         if items:
+            for item in items:
+                item.setForeground(QtCore.Qt.GlobalColor.black)
             items[self.index_load].setForeground(QtCore.Qt.GlobalColor.blue)
             self.index_marked = self.list_files.row(items[self.index_load])
             model_file = items[self.index_load].text()
@@ -477,7 +477,16 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         update_x = [self.update_vals, self.update_fixes, self.update_links][j - 1]
 
         try:
-            val = ast.literal_eval(self.tab_pars.item(i, j).text())
+            text = self.tab_pars.item(i, j).text()
+            for _inf in inf_str:
+                text = text.replace('-{}'.format(_inf), '[]')
+                text = text.replace(_inf, '{}')
+            val = ast.literal_eval(text)
+            if isinstance(val, list):
+                val = [-inf if isinstance(v, list) else inf if isinstance(v, dict) else v for v in val] if val else -inf
+            if isinstance(val, dict):
+                val = inf
+
         except (ValueError, TypeError, SyntaxError):
             val = self.tab_pars.item(i, j).text()
         for index in range(len(self.spectra_fit.files)):
