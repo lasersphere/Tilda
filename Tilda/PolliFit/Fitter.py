@@ -262,7 +262,7 @@ class Fitter(QObject):
         info = dict(warn=[], err=[], chi2=[])
         popt, pcov = [], []
         for i, (meas, model, x, y, yerr) in enumerate(zip(self.meas, self.models, self.x, self.y, self.yerr)):
-            _popt, _pcov, _info = fit.fit(
+            _popt, _pcov, _info = fit(
                 model, x, y, sigma_y=yerr, report=True, routine=self.config['routine'],
                 absolute_sigma=self.config['absolute_sigma'], guess_offset=self.config['guess_offset'],
                 mc_sigma=self.config['samples_mc'] if self.config['cov_mc'] else 0)
@@ -286,7 +286,7 @@ class Fitter(QObject):
     def fit_linked(self):
         info = dict(warn=[], err=[], chi2=[])
         model = Linked(self.models)
-        _popt, _pcov, _info = fit.fit(
+        _popt, _pcov, _info = fit(
             model, self.x, self.y, sigma_y=self.yerr, report=True, routine=self.config['routine'],
             absolute_sigma=self.config['absolute_sigma'], guess_offset=self.config['guess_offset'],
             mc_sigma=self.config['samples_mc'] if self.config['cov_mc'] else 0)
