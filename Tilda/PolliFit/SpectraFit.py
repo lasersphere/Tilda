@@ -63,6 +63,26 @@ def gen_splitter_models(config, iso):
     return splitter, args
 
 
+def gen_model(config, iso, spectra_fit=None):
+    splitter, args = gen_splitter_models(config, iso)
+    splitter_model = mod.SplitterSummed([
+        splitter(eval('mod.{}()'.format(config['lineshape'])), *_args) for _args in args])
+    if spectra_fit is not None:
+        spectra_fit.splitter_models.append(splitter_model)
+    npeaks_model = mod.NPeak(model=splitter_model, n_peaks=config['npeaks'])
+    if config['convolve'] != 'None':
+        npeaks_model = eval('mod.{}Convolved'.format(config['convolve']))(model=npeaks_model)
+    offset = config['offset_order']
+    x_cuts = None
+    if config['offset_per_track']:
+        x_cuts = [float(i) for i in range(len(offset) - 1)]  # The correct x_cuts are not known at this point.
+        # The actual x_cuts are set after the fitter is created.
+    else:
+        offset = [offset[0], ]
+    offset_model = mod.Offset(model=npeaks_model, x_cuts=x_cuts, offsets=offset)
+    return offset_model
+
+
 class SpectraFit:
     def __init__(self, db, files, runs, configs, index_config,
                  x_axis='ion frequencies', routine='curve_fit', absolute_sigma=False, guess_offset=True,
@@ -128,22 +148,7 @@ class SpectraFit:
         return file_paths
 
     def gen_model(self, config, iso):
-        splitter, args = gen_splitter_models(config, iso)
-        splitter_model = mod.SplitterSummed([
-            splitter(eval('mod.{}()'.format(config['lineshape'])), *_args) for _args in args])
-        self.splitter_models.append(splitter_model)
-        npeaks_model = mod.NPeak(model=splitter_model, n_peaks=config['npeaks'])
-        if config['convolve'] != 'None':
-            npeaks_model = eval('mod.{}Convolved'.format(config['convolve']))(model=npeaks_model)
-        offset = config['offset_order']
-        x_cuts = None
-        if config['offset_per_track']:
-            x_cuts = [float(i) for i in range(len(offset) - 1)]  # The correct x_cuts are not known at this point.
-            # The actual x_cuts are set after the fitter is created.
-        else:
-            offset = [offset[0], ]
-        offset_model = mod.Offset(model=npeaks_model, x_cuts=x_cuts, offsets=offset)
-        return offset_model
+        return gen_model(config, iso, self)
 
     def gen_config(self):
         return dict(x_axis=self.x_axis, routine=self.routine, absolute_sigma=self.absolute_sigma,
@@ -370,7 +375,9 @@ class SpectraFit:
             #     pars = TiTs.select_from_db(self.db, 'pars', 'FitPars', [['file'], [file]], caller_name=__name__)
             if load_from_isotopes:
                 return self._pars_from_legacy_db(file, run)
-        pars = ast.literal_eval(pars[index][-1])
+        p = pars[index][-1].replace('(np.nan,', '(0.0,').replace('(nan,', '(0.0,') \
+            .replace('(np.inf,', '(0.0,').replace('(inf,', '(0.0,')
+        pars = ast.literal_eval(p)
         return pars
 
     def load_pars(self):
@@ -400,7 +407,9 @@ class SpectraFit:
         for i, (file, run, config) in enumerate(zip(self.files, self.runs, self.configs)):
             new_pars = {name: (val, fix, link) for (name, val, fix, link) in self.get_pars(i)}
             pars = TiTs.select_from_db(self.db, 'pars', 'FitPars', [['file', 'run'], [file, run]], caller_name=__name__)
-            pars = {} if pars is None else ast.literal_eval(pars[0][0])
+            p = pars[0][0].replace('(np.nan,', '(0.0,').replace('(nan,', '(0.0,') \
+                .replace('(np.inf,', '(0.0,').replace('(inf,', '(0.0,')
+            pars = {} if pars is None else ast.literal_eval(p)
             new_pars = {**pars, **new_pars}
             softw_gates = str(self.fitter.meas[i].softw_gates)
             if 'inf' in softw_gates:

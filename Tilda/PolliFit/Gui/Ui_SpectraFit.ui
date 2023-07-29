@@ -107,7 +107,7 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>293</width>
+            <width>299</width>
             <height>45</height>
            </rect>
           </property>
@@ -322,7 +322,7 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>408</width>
+            <width>402</width>
             <height>45</height>
            </rect>
           </property>
@@ -556,9 +556,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-189</y>
-            <width>283</width>
-            <height>580</height>
+            <y>-142</y>
+            <width>288</width>
+            <height>621</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="vert_options_layout" stretch="1,0,0,0,1,0,0,0,1,0,0,0,1">
@@ -600,7 +600,6 @@
               <widget class="QLabel" name="l_model_options">
                <property name="font">
                 <font>
-                 <weight>75</weight>
                  <bold>true</bold>
                 </font>
                </property>
@@ -801,7 +800,6 @@
             <widget class="QLabel" name="l_fit_options">
              <property name="font">
               <font>
-               <weight>75</weight>
                <bold>true</bold>
               </font>
              </property>
@@ -1071,7 +1069,12 @@
                   </item>
                   <item>
                    <property name="text">
-                    <string>DAC volt (TODO)</string>
+                    <string>DAC voltages</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>voltages</string>
                    </property>
                   </item>
                  </widget>
@@ -1139,7 +1142,6 @@
             <widget class="QLabel" name="l_plot_options">
              <property name="font">
               <font>
-               <weight>75</weight>
                <bold>true</bold>
               </font>
              </property>
@@ -1197,19 +1199,6 @@
                 </property>
                 <property name="text">
                  <string>plot</string>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="0">
-               <widget class="QCheckBox" name="check_x_as_freq">
-                <property name="toolTip">
-                 <string>Display the x-axis in frequencies or voltages (Only changes plot).</string>
-                </property>
-                <property name="text">
-                 <string>x as freq.</string>
-                </property>
-                <property name="checked">
-                 <bool>true</bool>
                 </property>
                </widget>
               </item>
@@ -1302,6 +1291,22 @@
                 </property>
                 <property name="text">
                  <string>zoom data</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="0">
+               <widget class="QCheckBox" name="check_x_as_freq">
+                <property name="enabled">
+                 <bool>false</bool>
+                </property>
+                <property name="toolTip">
+                 <string>Display the x-axis in frequencies or voltages (Only changes plot).</string>
+                </property>
+                <property name="text">
+                 <string>x as freq.</string>
+                </property>
+                <property name="tristate">
+                 <bool>true</bool>
                 </property>
                </widget>
               </item>

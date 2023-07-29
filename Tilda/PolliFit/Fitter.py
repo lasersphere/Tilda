@@ -54,7 +54,7 @@ class Fitter(QObject):
         self.routines = {'curve_fit', }
 
         self.sizes = []
-        self.x_volt, self.x, self.y, self.yerr = [], [], [], []
+        self.x_raw, self.x, self.y, self.yerr = [], [], [], []
         self.popt, self.pcov, self.info = [], [], {}
         self.gen_data()
 
@@ -178,11 +178,11 @@ class Fitter(QObject):
         :returns: x_volt, x, y, yerr. The combined sorted data of the given measurements and fitting options.
         """
         self.sizes = []
-        self.x_volt, self.x, self.y, self.yerr = [], [], [], []
+        self.x_raw, self.x, self.y, self.yerr = [], [], [], []
         for meas, st, iso in zip(self.meas, self.st, self.iso):
             data = meas.getArithSpec(*st, function=self.config['arithmetics'], eval_on=True)
             self.sizes.append(data[0].size)
-            self.x_volt.append(data[0])
+            self.x_raw.append(data[0])
             if meas.seq_type == 'kepco':
                 self.x.append(data[0])
                 self.y.append(data[1])
@@ -198,8 +198,10 @@ class Fitter(QObject):
                 if self.config['x_axis'] in ['ion frequencies', 'lab frequencies']:
                     self.x.append(Ph.volt_to_rel_freq(volt, iso.q, iso.mass, laser_freq, iso.freq, meas.col,
                                                       lab_frame=self.config['x_axis'] == 'lab frequencies'))
-                else:  # TODO: Implement DAC voltages.
-                    pass
+                elif self.config['x_axis'] == 'DAC voltages':
+                    self.x.append(np.array([i for i in it.chain(*meas.x_dac_volt)]))
+                else:
+                    self.x.append(data[0])
                 self._gen_yerr(meas, st)
                 # self._gen_yerr(meas, st, data)
         if all(model.type == 'Offset' for model in self.models):
@@ -247,7 +249,7 @@ class Fitter(QObject):
         else:
             # if bounds are given instead of boolean, write False to fixed bool list.
             fixed_sum = sum(f if isinstance(f, bool) else False for f in self.models[i].fixes)
-            return self.x_volt[i].size - (self.models[i].size - fixed_sum)
+            return self.x_raw[i].size - (self.models[i].size - fixed_sum)
 
     def residuals(self, i=None):
         """ Calculate the residuals of the current parameter set """
@@ -530,7 +532,7 @@ class Fitter(QObject):
         self._fit()
         results = self._calc_col_acol(col, acol)
         i = 0
-        while (abs(max(r['df'] for r in results)) > mhz) and i < iterate:
+        while (max(abs(r['df']) for r in results) > mhz) and i < iterate:
             self._optimize_acc_volt(results, col, acol)
             self._fit()
             results = self._calc_col_acol(col, acol)

@@ -125,6 +125,7 @@ class XMLImporter(SpecData):
         # x_as_volt = False
         logging.debug('axaxis as voltage: %s ' % x_as_volt)
         self.x = TildaTools.create_x_axis_from_file_dict(scan_dict, as_voltage=x_as_volt)  # x axis, voltage
+        self.x_dac_volt = self.x.copy()
         self.x_dac = TildaTools.create_x_axis_from_file_dict(scan_dict, as_voltage=False)  # handy for importing files
         self.cts = []  # countervalues, this is the voltage projection here
         self.err = []  # error to the countervalues
@@ -395,6 +396,7 @@ class XMLImporter(SpecData):
                         self.x[tr_ind] = TildaTools.line_to_total_volt(
                             self.x[tr_ind], self.lineMult, self.lineOffset, self.offset[tr_ind], self.accVolt,
                             self.voltDivRatio, offset_by_dev_mean=self.offset_by_dev_mean[tr_ind])
+                    # self.norming()  # Uncomment for normalization in interactive fit.
                     self.x_units = self.x_units_enums.total_volts
                 self.laserFreq *= self.voltDivRatio.get('laserFreq', 1.)
                 self.laserFreq_d *= self.voltDivRatio.get('laserFreq', 1.)
@@ -466,6 +468,20 @@ class XMLImporter(SpecData):
         else:
             n_of_bins_tr = -1
         return n_of_scalers_tr, n_of_steps_tr, n_of_bins_tr
+
+    def norming(self):
+        # TODO this is copied from MCP, still the dwell is not implemented in this!
+        for trackindex, track in enumerate(self.cts):
+            track = track.astype(np.float32)
+            self.cts[trackindex] = track
+            for ctIndex, ct in enumerate(track):
+                min_nr_of_scan = max(np.min(self.nrScans), 1)  # maybe there is a track with 0 complete scans
+                nr_of_scan_this_track = self.nrScans[trackindex]
+                if nr_of_scan_this_track:
+                    # dtype int32 causes problems here!
+                    self.cts[trackindex][ctIndex] = ct * min_nr_of_scan / nr_of_scan_this_track
+                    self.err[trackindex][ctIndex] = self.err[trackindex][
+                                                        ctIndex] * min_nr_of_scan / nr_of_scan_this_track
 
     def get_data_str(self, dev):
         if dev == 'dmms':

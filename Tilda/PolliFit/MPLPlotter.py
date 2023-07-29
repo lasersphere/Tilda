@@ -3,6 +3,7 @@ Created on 29.04.2014
 
 @author: hammen
 '''
+
 import datetime
 import os
 import string
@@ -267,7 +268,7 @@ def plot_model_fit(fitter, index, x_as_freq=True, plot_summands=True, plot_npeak
     fixes = [fix for fix in model.fixes]
     model.set_fixes([False for _ in fixes])  # Reset after side peaks are created.
 
-    x_volt, x, y, yerr = fitter.x_volt[index], fitter.x[index], fitter.y[index], fitter.yerr[index]
+    x_volt, x, y, yerr = fitter.x_raw[index], fitter.x[index], fitter.y[index], fitter.yerr[index]
     y_res = model(x, *model.vals) - y
 
     x0 = [np.min(x), np.max(x)]
@@ -283,16 +284,16 @@ def plot_model_fit(fitter, index, x_as_freq=True, plot_summands=True, plot_npeak
     ax2.set_ylabel('residuals (counts)', fontsize=fontsize)
     if fitter.meas[index].seq_type == 'kepco':
         _x = x_volt
-        ax2.set_xlabel('line voltage (V)', fontsize=fontsize, labelpad=fontsize / 2)
+        ax2.set_xlabel('DAC voltage (V)', fontsize=fontsize, labelpad=fontsize / 2)
         ax1.set_ylabel('voltage (V)', fontsize=fontsize)
         ax2.set_ylabel('residuals (V)', fontsize=fontsize)
-    elif x_as_freq:
-        ax2.set_xlabel('relative frequency (MHz)', fontsize=fontsize, labelpad=fontsize / 2)
     else:
-        x_fit = Physics.rel_freq_to_volt(x_fit, fitter.iso[index].q, fitter.iso[index].mass,
-                                         fitter.meas[index].laserFreq, fitter.iso[index].freq, fitter.meas[index].col)
-        _x = x_volt
-        ax2.set_xlabel('voltage (V)'.format(fitter.meas[index].accVolt), fontsize=fontsize, labelpad=fontsize / 2)
+        if fitter.config['x_axis'] in {'ion frequencies', 'lab frequencies'}:
+            ax2.set_xlabel('relative frequency (MHz)', fontsize=fontsize, labelpad=fontsize / 2)
+        elif fitter.config['x_axis'] == 'DAC voltages':
+            ax2.set_xlabel('DAC voltage (V)', fontsize=fontsize, labelpad=fontsize / 2)
+        else:
+            ax2.set_xlabel('voltage (V)', fontsize=fontsize, labelpad=fontsize / 2)
 
     plot_data = ax1.errorbar(_x, y, yerr=yerr, fmt=fmt, label=fitter.meas[index].file)
     plot_fit = ax1.plot(x_fit, y_fit, '-C0', label='Full fit')
@@ -401,7 +402,7 @@ def save_plot_as_ascii(x, y, y_res, yerr, x_fit, y_fit, *y_fit_extra, save_path=
     f = os.path.join(save_path, '{}.fit.txt'.format(filename))
     np.savetxt(f, np.array([x_fit, y_fit, *y_fit_extra]).T,
                delimiter=', ', header='{}, fit intensity (counts){}'.format(xlabel, labels_extra))
-    print('Saved plot as ASCII files in {}.'.format(save_path))
+    # print('Saved plot as ASCII files in {}.'.format(save_path))
 
 
 def plotMoments(cts, q=True, fontsize_ticks=10):

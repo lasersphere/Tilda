@@ -31,6 +31,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
     def __init__(self):
         super(SpectraFitUi, self).__init__()
         self.setupUi(self)
+        self.check_x_as_freq.setCheckState(1)  # currently not used.
 
         self.hf_mixing_config_ui = None
         self.trs_config_ui = None
@@ -461,6 +462,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.spectra_fit.save_pars()
 
     def set_par_multi(self, i, j, suppress_plot=False):
+        print('Cell changed')
         self.tab_pars.blockSignals(True)
         text = self.tab_pars.item(i, j).text()
         for item in self.tab_pars.selectedItems():
@@ -584,12 +586,6 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.spectra_fit.absolute_sigma = not self.check_chi2.isChecked()
 
     def set_x_axis(self, suppress_plot=False):
-        # TODO: Implement DAC voltages as x-axis, replace plot option.
-        if self.c_xaxis.currentText() == 'DAC volt (TODO)':
-            self.c_xaxis.blockSignals(True)
-            self.c_xaxis.setCurrentText(self.spectra_fit.x_axis)
-            self.c_xaxis.blockSignals(False)
-            return
         self.spectra_fit = self.gen_spectra_fit()
         self.plot_auto(suppress_plot)
 
