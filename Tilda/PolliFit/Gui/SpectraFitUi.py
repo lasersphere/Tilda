@@ -462,7 +462,6 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.spectra_fit.save_pars()
 
     def set_par_multi(self, i, j, suppress_plot=False):
-        print('Cell changed')
         self.tab_pars.blockSignals(True)
         text = self.tab_pars.item(i, j).text()
         for item in self.tab_pars.selectedItems():
