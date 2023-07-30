@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'Ui_Crawler.ui'
+# Form implementation generated from reading ui file 'E:\Users\Patrick\Documents\Python Projects\Tilda\Tilda\PolliFit\Gui\Ui_Crawler.ui'
 #
-# Created: Thu Aug  4 20:40:00 2016
-#      by: PyQt5 UI code generator 5.3.1
+# Created by: PyQt5 UI code generator 5.14.1
 #
 # WARNING! All changes made in this file will be lost!
 
-from PyQt5 import QtCore, QtWidgets
+
+from PyQt5 import QtCore, QtGui, QtWidgets
+
 
 class Ui_Crawler(object):
     def setupUi(self, Crawler):
@@ -36,6 +37,51 @@ class Ui_Crawler(object):
         self.recursive.setObjectName("recursive")
         self.horizontalLayout.addWidget(self.recursive)
         self.verticalLayout.addLayout(self.horizontalLayout)
+        self.hor_acc_voltage = QtWidgets.QHBoxLayout()
+        self.hor_acc_voltage.setObjectName("hor_acc_voltage")
+        spacerItem = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.hor_acc_voltage.addItem(spacerItem)
+        self.l_acc_voltage = QtWidgets.QLabel(Crawler)
+        self.l_acc_voltage.setObjectName("l_acc_voltage")
+        self.hor_acc_voltage.addWidget(self.l_acc_voltage)
+        self.c_accVolt = QtWidgets.QComboBox(Crawler)
+        self.c_accVolt.setMinimumSize(QtCore.QSize(250, 0))
+        self.c_accVolt.setObjectName("c_accVolt")
+        self.c_accVolt.addItem("")
+        self.c_accVolt.addItem("")
+        self.hor_acc_voltage.addWidget(self.c_accVolt)
+        self.hor_acc_voltage.setStretch(0, 1)
+        self.verticalLayout.addLayout(self.hor_acc_voltage)
+        self.hor_off_voltage = QtWidgets.QHBoxLayout()
+        self.hor_off_voltage.setObjectName("hor_off_voltage")
+        spacerItem1 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.hor_off_voltage.addItem(spacerItem1)
+        self.l_offset = QtWidgets.QLabel(Crawler)
+        self.l_offset.setObjectName("l_offset")
+        self.hor_off_voltage.addWidget(self.l_offset)
+        self.c_offset = QtWidgets.QComboBox(Crawler)
+        self.c_offset.setMinimumSize(QtCore.QSize(250, 0))
+        self.c_offset.setObjectName("c_offset")
+        self.c_offset.addItem("")
+        self.c_offset.addItem("")
+        self.hor_off_voltage.addWidget(self.c_offset)
+        self.hor_off_voltage.setStretch(0, 1)
+        self.verticalLayout.addLayout(self.hor_off_voltage)
+        self.hor_laser = QtWidgets.QHBoxLayout()
+        self.hor_laser.setObjectName("hor_laser")
+        spacerItem2 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.hor_laser.addItem(spacerItem2)
+        self.l_laser = QtWidgets.QLabel(Crawler)
+        self.l_laser.setObjectName("l_laser")
+        self.hor_laser.addWidget(self.l_laser)
+        self.c_laserFreq = QtWidgets.QComboBox(Crawler)
+        self.c_laserFreq.setMinimumSize(QtCore.QSize(250, 0))
+        self.c_laserFreq.setObjectName("c_laserFreq")
+        self.c_laserFreq.addItem("")
+        self.c_laserFreq.addItem("")
+        self.hor_laser.addWidget(self.c_laserFreq)
+        self.hor_laser.setStretch(0, 1)
+        self.verticalLayout.addLayout(self.hor_laser)
         self.bcrawl = QtWidgets.QPushButton(Crawler)
         self.bcrawl.setObjectName("bcrawl")
         self.verticalLayout.addWidget(self.bcrawl)
@@ -61,8 +107,8 @@ class Ui_Crawler(object):
         self.pushButton_load_sql.setObjectName("pushButton_load_sql")
         self.formLayout.setWidget(1, QtWidgets.QFormLayout.FieldRole, self.pushButton_load_sql)
         self.verticalLayout.addLayout(self.formLayout)
-        spacerItem = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
-        self.verticalLayout.addItem(spacerItem)
+        spacerItem3 = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+        self.verticalLayout.addItem(spacerItem3)
 
         self.retranslateUi(Crawler)
         QtCore.QMetaObject.connectSlotsByName(Crawler)
@@ -72,8 +118,16 @@ class Ui_Crawler(object):
         Crawler.setWindowTitle(_translate("Crawler", "Form"))
         self.label.setText(_translate("Crawler", "Data Folder (relative to DB)"))
         self.recursive.setText(_translate("Crawler", "Recursive"))
+        self.l_acc_voltage.setText(_translate("Crawler", "Acceleration voltage channel"))
+        self.c_accVolt.setItemText(0, _translate("Crawler", "Automatic"))
+        self.c_accVolt.setItemText(1, _translate("Crawler", "None"))
+        self.l_offset.setText(_translate("Crawler", "Offset voltage channel"))
+        self.c_offset.setItemText(0, _translate("Crawler", "Automatic"))
+        self.c_offset.setItemText(1, _translate("Crawler", "None"))
+        self.l_laser.setText(_translate("Crawler", "Laser frequency channel"))
+        self.c_laserFreq.setItemText(0, _translate("Crawler", "Automatic"))
+        self.c_laserFreq.setItemText(1, _translate("Crawler", "None"))
         self.bcrawl.setText(_translate("Crawler", "Crawl"))
         self.label_2.setText(_translate("Crawler", "sql command after crawl"))
         self.pushButton_save_sql.setText(_translate("Crawler", "save sql cmd"))
         self.pushButton_load_sql.setText(_translate("Crawler", "load sql cmd"))
-

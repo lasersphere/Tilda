@@ -5,12 +5,14 @@ Created on 06.06.2014
 """
 
 import os
+from lxml import etree
 import sqlite3
 
 from PyQt5 import QtWidgets
 
 from Tilda.PolliFit import Tools
 from Tilda.PolliFit.Gui.Ui_Crawler import Ui_Crawler
+from Tilda.PolliFit.Measurement.XMLImporter import METADATA_SYSTEMS, METADATA_CHANNELS
 
 
 class CrawlerUi(QtWidgets.QWidget, Ui_Crawler):
@@ -28,12 +30,58 @@ class CrawlerUi(QtWidgets.QWidget, Ui_Crawler):
         self.show()
         
     def conSig(self, dbSig):
-        dbSig.connect(self.dbChange)    
+        dbSig.connect(self.dbChange)
+
+    def get_channels_from_xml(self, file):
+        channels = set()
+        root = etree.parse(file)
+        header = root.find('tracks').find('track0').find('header')
+        pre_dur_post = ['preScan', 'duringScan', 'postScan']
+        for msys in METADATA_SYSTEMS:
+            _msys = header.find(msys)
+            if _msys is None:
+                continue
+            for pdp in pre_dur_post:
+                _pdp = _msys.find(pdp)
+                if _pdp is None:
+                    continue
+                if msys == 'sql':
+                    channels = channels.union(set(ch.tag for ch in _pdp))
+                elif msys == 'measureVoltPars':
+                    dev = _pdp.find('dmms')
+                    if dev is None:
+                        continue
+                    channels = channels.union(set(f'{dev.tag}.{ch.tag}' for ch in dev))
+                else:
+                    for dev in _pdp:
+                        channels = channels.union(set(f'{dev.tag}.{ch.tag}' for ch in dev))
+        return channels
+
+    def load_channels_from_folder(self):
+        files = list(os.path.join(_files[0], f) for _files in os.walk(os.path.dirname(self.dbpath))
+                     for f in _files[2] if os.path.splitext(f)[1] == '.xml')
+        channels = set()
+        for f in files:
+            channels = channels.union(self.get_channels_from_xml(f))
+        channels = sorted(channels)
+        for c_box in [self.c_accVolt, self.c_offset, self.c_laserFreq]:
+            c_box.clear()
+            c_box.addItems(['Automatic', 'None'])
+            c_box.addItems(channels)
+            c_box.setCurrentIndex(0)
+
+    def get_meta_data_channels(self):
+        meta_data_channels = {mtype: eval(f'self.c_{mtype}', {'self': self}).currentText().replace('Automatic', '')
+                              for mtype in METADATA_CHANNELS.keys()}
+        meta_data_channels = {mtype: eval(dev_ch) if dev_ch == 'None' else dev_ch
+                              for mtype, dev_ch in meta_data_channels.items()}
+        return meta_data_channels
     
     def crawl(self):
         t = self.path.text()
         path = t if t != '' else '.'
-        Tools.crawl(self.dbpath, path, self.recursive.isChecked())
+        Tools.crawl(self.dbpath, path=path, rec=self.recursive.isChecked(),
+                    add_miss_cols=True, meta_data_channels=self.get_meta_data_channels())
         if self.lineEdit_sql_cmd.text():
             con = sqlite3.connect(self.dbpath)
             cur = con.cursor()
@@ -43,6 +91,7 @@ class CrawlerUi(QtWidgets.QWidget, Ui_Crawler):
 
     def dbChange(self, dbpath):
         self.dbpath = dbpath
+        self.load_channels_from_folder()
         sql_file = os.path.join(os.path.split(self.dbpath)[0], 'sql_cmd.txt')
         if os.path.isfile(sql_file):
             self.load_sql_cmd(False, path=sql_file)

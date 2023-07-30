@@ -20,10 +20,13 @@ from Tilda.Service.Scan.draftScanParameters import draft_scan_device
 import Tilda.Service.VoltageConversions.VoltageConversions as VCon
 
 
+METADATA_SYSTEMS = ['measureVoltPars', 'triton', 'sql']
+
+
 METADATA_CHANNELS = dict(
     accVolt=['agilent', 'pxi', 'hv', 'voltage', 'accvolt'],
     offset=['agilent', 'pxi', 'offset'],
-    frequency=['laser_freq_mult', 'frequency']
+    laserFreq=['laser_freq_mult', 'frequency']
 )
 
 
@@ -32,7 +35,7 @@ class XMLImporter(SpecData):
     This Module Reads the .xml files or reads from a given scan_dictionary.
     """
 
-    def __init__(self, path=None, x_as_volt=True, scan_dict=None, softw_gates=None):
+    def __init__(self, path=None, x_as_volt=True, scan_dict=None, softw_gates=None, meta_data_channels=None):
         """
         Class representing an XML file.
 
@@ -92,7 +95,9 @@ class XMLImporter(SpecData):
             self.dac_calibration_measurement = True
 
         ''' Get voltage and frequency metadata from scan_dict or XML file '''
-        self.meta_data_channels = dict(accVolt='', offset='', frequency='')
+        if meta_data_channels is None:
+            meta_data_channels = {mtype: '' for mtype in METADATA_CHANNELS.keys()}
+        self.meta_data_channels = meta_data_channels
         # take the GUI value if it was not measured.
         self.accVolt, self.accVolt_d = scan_dict['isotopeData']['accVolt'], 0.
         voltages = self.get_metadata_measurement(scan_dict, 'accVolt')
@@ -112,7 +117,7 @@ class XMLImporter(SpecData):
 
         # take the GUI value if it was not measured.
         self.laserFreq, self.laserFreq_d = Physics.freqFromWavenumber(scan_dict['isotopeData']['laserFreq']), 0.
-        frequencies = self.get_metadata_measurement(scan_dict, 'frequency')
+        frequencies = self.get_metadata_measurement(scan_dict, 'laserFreq')
         if frequencies and any(d for d in frequencies):
             # Currently there is only 1 frequency allowed.
             frequencies = [f for f_track in frequencies for f in f_track]
@@ -431,21 +436,26 @@ class XMLImporter(SpecData):
                 con.close()
 
     def export(self, db):
+        columns, c_vals = [], []
+        for mtype, dev_ch in self.meta_data_channels.items():
+            if dev_ch is None:
+                continue
+            columns.append(mtype)
+            c_vals.append(eval(f'self.{mtype}'))
+            if isinstance(c_vals[-1], list):
+                c_vals[-1] = str(c_vals[-1])
+            if mtype == 'laserFreq':
+                columns.append('laserFreq_d')
+                c_vals.append(self.laserFreq_d)
         try:
             self.convert_date_to_mid_time()
             con = sqlite3.connect(db)
             col = 1 if self.col else 0
             with con:
-                # print('exporting:')
-                # print((self.date, self.type, str(self.offset),
-                #        self.laserFreq, col, self.accVolt, self.laserFreq_d,
-                #        self.file, self.date_d))
-                con.execute('''UPDATE Files SET date = ?, type = ?, offset = ?,
-                                laserFreq = ?, colDirTrue = ?, accVolt = ?, laserFreq_d = ?, errDateInS = ?
-                                 WHERE file = ?''',
-                            (self.date, self.type, str(self.offset),
-                             self.laserFreq, col, self.accVolt, self.laserFreq_d, self.date_d,
-                             self.file))
+                comma = ', ' if columns else ''
+                con.execute('UPDATE Files SET date = ?, errDateInS = ?, type = ?, colDirTrue = ?'
+                            '{} WHERE file = ?'.format(comma + f', '.join([f'{c} = ?' for c in columns])),
+                            [self.date, self.date_d, self.type, col] + c_vals + [self.file])
             con.close()
         except Exception as e:
             logging.error('error while exporting values from file %s, error is: %s' % (self.file, e), exc_info=True)
@@ -489,9 +499,10 @@ class XMLImporter(SpecData):
         return 'data'
 
     def find_metadata_key(self, meta_dict, mtype):
-        # TODO: Let the user choose the channel.
         dev_ch = self.meta_data_channels[mtype]
-        if dev_ch:
+        if dev_ch is None:
+            return None, None
+        elif dev_ch:
             data_key = self.get_data_str(dev_ch[:dev_ch.find('.')])
             return dev_ch, data_key
 

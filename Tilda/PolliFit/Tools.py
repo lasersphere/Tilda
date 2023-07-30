@@ -195,7 +195,7 @@ def centerPlot(db, isoL, linevar='', width=1e6):
     plt.show()
     
 
-def crawl(db, crawl='.', rec=True, add_miss_cols=True):
+def crawl(db, path='.', rec=True, add_miss_cols=True, meta_data_channels=None):
     """ Crawl the path and add all measurement files to the database, recursively if requested """
     projectPath, dbname = os.path.split(db)
     print("Crawling", projectPath)
@@ -204,13 +204,13 @@ def crawl(db, crawl='.', rec=True, add_miss_cols=True):
     oldPath = os.getcwd()
     
     os.chdir(projectPath)
-    _insertFolder(crawl, rec, dbname)
+    _insertFolder(path, rec, dbname, meta_data_channels=meta_data_channels)
     os.chdir(oldPath)
     
     print("Done")
     
 
-def _insertFolder(path, rec, db):
+def _insertFolder(path, rec, db, meta_data_channels=None):
     (p, d, f) = next(os.walk(path))
         
     if rec:
@@ -218,10 +218,10 @@ def _insertFolder(path, rec, db):
             _insertFolder(os.path.join(p, _d), rec, db)
     
     for _f in f:
-        _insertFile(os.path.join(p, _f), db)
+        _insertFile(os.path.join(p, _f), db, meta_data_channels=meta_data_channels)
 
 
-def _insertFile(f, db, x_as_voltage=True):
+def _insertFile(f, db, x_as_voltage=True, meta_data_channels=None):
     con = sqlite3.connect(db)
     cur = con.cursor()
     
@@ -237,8 +237,8 @@ def _insertFile(f, db, x_as_voltage=True):
     try:
         cur.execute('''INSERT INTO Files (file, filePath) VALUES (?, ?)''', (os.path.basename(f), f))
         con.commit()
-        spec = Meas.load(f, db, True, x_as_voltage)
-        spec.export(db)  
+        spec = Meas.load(f, db, True, x_as_voltage=x_as_voltage, meta_data_channels=meta_data_channels)
+        spec.export(db)
     except:
         print("Error working on file", f, ":", sys.exc_info()[1])
         traceback.print_tb(sys.exc_info()[2])
