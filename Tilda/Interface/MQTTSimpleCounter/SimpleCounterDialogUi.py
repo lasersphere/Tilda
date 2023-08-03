@@ -29,7 +29,7 @@ class SimpleCounterDialogUi(QtWidgets.QDialog, Ui_Dialog_simpleCounterControl):
         self.spinBox_plotpoints.valueChanged.connect(self.set_datapoints)
 
         ''' default vals: '''
-        self.lineEdit_act_pmts.setText('0, 1, 2, 3')
+        self.lineEdit_act_pmts.setText('')
         self.spinBox_plotpoints.setValue(600)
 
         self.exec_()
