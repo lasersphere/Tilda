@@ -78,7 +78,7 @@ client_id = f'subscribe-{random.randint(0, 1000)}'
 def connect_mqtt() -> mqtt_client:
     def on_connect(client, userdata, flags, rc):
         if rc == 0:
-            print("Connected to MQTT Broker!")
+            print("Connected to MQTT Broker")
         else:
             print("Failed to connect, return code %d\n", rc)
 
@@ -206,9 +206,38 @@ class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
     def stop(self):
         self.close()
 
-    def closeEvent(self, *args, **kwargs):
-        Cfg._main_instance.stop_simple_counter()
-        self.main_gui.close_simple_counter_win()
+    # def close(self):
+    #     print('closing')
+    #     msgBox = QtWidgets.QMessageBox()
+    #     msgBox.setText("Are you sure?")
+    #     msgBox.setInformativeText("MQTT Simple Counter must remain open to update the DACvoltage")
+    #     okButton = msgBox.addButton(QtWidgets.QMessageBox.Ok)
+    #     cancelButton = msgBox.addButton(QtWidgets.QMessageBox.Cancel)
+    #     msgBox.exec()
+    #     if msgBox.clickedButton() == okButton:
+    #         self.checkBox.setCheckState(False)
+    #         Cfg._main_instance.stop_simple_counter()
+    #         self.main_gui.close_simple_counter_win()
+    #         super().close()
+    #         print('closed')
+    #     else:
+    #         print('cancelled')
+
+
+    def closeEvent(self, event, *args, **kwargs):
+        msgBox = QtWidgets.QMessageBox()
+        msgBox.setText("Are you sure?")
+        msgBox.setInformativeText("MQTT Simple Counter must remain open to update the DACvoltage")
+        okButton = msgBox.addButton(QtWidgets.QMessageBox.Ok)
+        cancelButton = msgBox.addButton(QtWidgets.QMessageBox.Cancel)
+        msgBox.exec()
+        if msgBox.clickedButton() == okButton:
+            self.checkBox.setCheckState(False)
+            Cfg._main_instance.stop_simple_counter()
+            self.main_gui.close_simple_counter_win()
+        else:
+            QtCore.QEvent.ignore(event)
+
 
     def set_post_acc_ctrl(self, state_name):
         Cfg._main_instance.simple_counter_post_acc(state_name)
@@ -225,7 +254,7 @@ class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
 
     def set_dac_volt(self):
         volt_dbl = self.doubleSpinBox.value()
-        print(volt_dbl)
+        #(volt_dbl)
         Cfg._main_instance.simple_counter_set_dac_volt(volt_dbl)
 
     def resize_counters(self):
@@ -295,7 +324,7 @@ class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
 
         def subscribe(client: mqtt_client):
             def on_message(client, userdata, msg):
-                print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
+                #print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
                 self.doubleSpinBox.setProperty("value", msg.payload.decode())
 
             client.subscribe(topic)
