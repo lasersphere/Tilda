@@ -227,7 +227,7 @@ class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
     def closeEvent(self, event, *args, **kwargs):
         msgBox = QtWidgets.QMessageBox()
         msgBox.setText("Are you sure?")
-        msgBox.setInformativeText("MQTT Simple Counter must remain open to update the DACvoltage")
+        msgBox.setInformativeText("MQTT Simple Counter must remain open to update the DAC voltage.")
         okButton = msgBox.addButton(QtWidgets.QMessageBox.Ok)
         cancelButton = msgBox.addButton(QtWidgets.QMessageBox.Cancel)
         msgBox.exec()
