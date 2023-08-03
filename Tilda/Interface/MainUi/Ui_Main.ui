@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>548</width>
-    <height>252</height>
+    <width>746</width>
+    <height>327</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -189,8 +189,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>548</width>
-     <height>21</height>
+     <width>746</width>
+     <height>26</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuTilda_MainWindow">
@@ -206,6 +206,7 @@
     </property>
     <addaction name="actionScan_Control"/>
     <addaction name="actionSimple_Counter"/>
+    <addaction name="actionMQTT_Simple_Counter"/>
     <addaction name="actionSet_Laser_Frequency"/>
     <addaction name="actionSet_acceleration_voltage"/>
     <addaction name="actionPulse_pattern_generator"/>
@@ -400,6 +401,11 @@
   <action name="actionoptions">
    <property name="text">
     <string>Options</string>
+   </property>
+  </action>
+  <action name="actionMQTT_Simple_Counter">
+   <property name="text">
+    <string>MQTT Simple Counter</string>
    </property>
   </action>
  </widget>

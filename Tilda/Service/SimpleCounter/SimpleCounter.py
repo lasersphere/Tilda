@@ -31,6 +31,7 @@ class SimpleCounterControl:
         start the simple counter bitfile on the fpga
         """
         try:
+
             self.sc = SimpleCounter()  # does not go automatically to dummy mode if hardware is not installed.
             return True
         except Exception as e:

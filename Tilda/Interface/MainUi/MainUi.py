@@ -34,10 +34,11 @@ from Tilda.Interface.ScanControlUi.ScanControlUi import ScanControlUi
 from Tilda.Interface.JobStackerUi.JobStackerUi import JobStackerUi
 from Tilda.Interface.SimpleCounter.SimpleCounterDialogUi import SimpleCounterDialogUi
 from Tilda.Interface.SimpleCounter.SimpleCounterRunningUi import SimpleCounterRunningUi
+from Tilda.Interface.MQTTSimpleCounter.SimpleCounterDialogUi import SimpleCounterDialogUi as MQTTSimpleCounterDialogUi
+from Tilda.Interface.MQTTSimpleCounter.SimpleCounterRunningUi import SimpleCounterRunningUi as MQTTSimpleCounterRunningUi
 from Tilda.Interface.VersionUi.VersionUi import VersionUi
 from Tilda.Extra.Tetris.Tetris import Tetris
 from Tilda.Extra.Snake.Snake import Snake
-
 
 class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
     main_ui_status_call_back_signal = QtCore.pyqtSignal(dict)
@@ -78,6 +79,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.actionJob_Stacker.triggered.connect(self.open_job_stacker_win)  # TODO: define command and add actionItem
         self.actionPost_acceleration_power_supply_control.triggered.connect(self.open_post_acc_win)
         self.actionSimple_Counter.triggered.connect(self.open_simple_counter_win)
+        self.actionMQTT_Simple_Counter.triggered.connect(self.open_MQTTsimple_counter_win)
         self.actionoptions.triggered.connect(self.open_options_win)
         # self.actionSet_Laser_Frequency.triggered.connect(self.set_laser_freq)   # old version of frequency settings
         self.actionSet_Laser_Frequency.triggered.connect(self.open_freq_win)
@@ -388,6 +390,12 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         sc_dial = SimpleCounterDialogUi()  # blocking!
         if sc_dial.start:
             self.simple_counter_gui = SimpleCounterRunningUi(self, sc_dial.act_pmts, sc_dial.datapoints)
+            # Cfg._main_instance.start_simple_counter(sc_dial.act_pmts, sc_dial.datapoints)
+
+    def open_MQTTsimple_counter_win(self):
+        sc_dial = MQTTSimpleCounterDialogUi()  # blocking!
+        if sc_dial.start:
+            self.simple_counter_gui = MQTTSimpleCounterRunningUi(self, sc_dial.act_pmts, sc_dial.datapoints)
             # Cfg._main_instance.start_simple_counter(sc_dial.act_pmts, sc_dial.datapoints)
 
     def open_version_win(self):
