@@ -61,14 +61,14 @@ class Fitter(QObject):
     def get_pars(self, i):
         return self.models[i].get_pars()
 
-    def set_val(self, i, j, val):
-        self.models[i].set_val(j, val)
+    def set_val(self, i, j, val, force=False):
+        self.models[i].set_val(j, val, force=force)
 
-    def set_fix(self, i, j, fix):
-        self.models[i].set_fix(j, fix)
+    def set_fix(self, i, j, fix, force=False):
+        self.models[i].set_fix(j, fix, force=force)
 
-    def set_link(self, i, j, link):
-        self.models[i].set_link(j, link)
+    def set_link(self, i, j, link, force=False):
+        self.models[i].set_link(j, link, force=force)
 
     def get_meas_x_in_freq(self, i):
         meas, iso = self.meas[i], self.iso[i]

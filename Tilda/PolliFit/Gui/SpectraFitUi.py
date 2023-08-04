@@ -442,7 +442,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
     def _parse_fix(self, i, j):
         try:
             return ast.literal_eval(self.tab_pars.item(i, j).text())
-        except SyntaxError:
+        except (SyntaxError, ValueError):
             return self.tab_pars.item(i, j).text()
 
     def copy_pars(self):
@@ -452,7 +452,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
             tab_dict = {self.tab_pars.item(_i, 0).text(): [self._parse_fix(_i, _j) for _j in range(1, 4)]
                         for _i in range(self.tab_pars.rowCount())}
             pars = [tab_dict.get(name, [val, fix, link]) for name, val, fix, link in model.get_pars()]
-            model.set_pars(pars, force=True)
+            model.set_pars(pars)
 
     def reset_pars(self):
         self.spectra_fit.reset()

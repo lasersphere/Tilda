@@ -5,7 +5,7 @@ Created on 06.06.2014
 """
 
 import os
-from lxml import etree
+from lxml.etree import XMLParser, parse
 import sqlite3
 
 from PyQt5 import QtWidgets
@@ -34,7 +34,8 @@ class CrawlerUi(QtWidgets.QWidget, Ui_Crawler):
 
     def get_channels_from_xml(self, file):
         channels = set()
-        root = etree.parse(file)
+        p = XMLParser(huge_tree=True)
+        root = parse(file, parser=p)
         header = root.find('tracks').find('track0').find('header')
         pre_dur_post = ['preScan', 'duringScan', 'postScan']
         for msys in METADATA_SYSTEMS:

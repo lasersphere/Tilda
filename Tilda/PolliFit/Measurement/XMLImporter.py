@@ -404,6 +404,8 @@ class XMLImporter(SpecData):
                     # self.norming()  # Uncomment for normalization in interactive fit.
                     self.x_units = self.x_units_enums.total_volts
                 self.laserFreq *= self.voltDivRatio.get('laserFreq', 1.)
+                if self.laserFreq_d is None:
+                    self.laserFreq_d = 0.
                 self.laserFreq_d *= self.voltDivRatio.get('laserFreq', 1.)
 
             elif self.seq_type == 'kepco':  # correct kepco scans by the measured offset before the scan.

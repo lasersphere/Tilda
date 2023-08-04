@@ -267,14 +267,14 @@ class SpectraFit:
     def get_pars(self, i):
         return self.fitter.get_pars(i)
 
-    def set_val(self, i, j, val):
-        self.fitter.set_val(i, j, val)
+    def set_val(self, i, j, val, force=False):
+        self.fitter.set_val(i, j, val, force=force)
 
-    def set_fix(self, i, j, fix):
-        self.fitter.set_fix(i, j, fix)
+    def set_fix(self, i, j, fix, force=False):
+        self.fitter.set_fix(i, j, fix, force=force)
 
-    def set_link(self, i, j, link):
-        self.fitter.set_link(i, j, link)
+    def set_link(self, i, j, link, force=False):
+        self.fitter.set_link(i, j, link, force=force)
 
     def reset(self):
         if self.reset_model is None:
@@ -389,11 +389,11 @@ class SpectraFit:
             for j, (name, val, fix, link) in enumerate(self.get_pars(i)):
                 par = pars.get(name, (val, fix, link))
                 self.set_val(i, j, par[0])
-                try:
-                    self.set_fix(i, j, par[1])
-                except ZeroDivisionError:
-                    reload_fix.append((j, par[1]))
+                if isinstance(par[1], str):
                     self.set_fix(i, j, True)
+                    reload_fix.append((j, par[1]))
+                else:
+                    self.set_fix(i, j, par[1])
                 self.set_link(i, j, par[2])
             for j, fix in reload_fix:
                 self.set_fix(i, j, fix)
@@ -407,9 +407,11 @@ class SpectraFit:
         for i, (file, run, config) in enumerate(zip(self.files, self.runs, self.configs)):
             new_pars = {name: (val, fix, link) for (name, val, fix, link) in self.get_pars(i)}
             pars = TiTs.select_from_db(self.db, 'pars', 'FitPars', [['file', 'run'], [file, run]], caller_name=__name__)
-            p = pars[0][0].replace('(np.nan,', '(0.0,').replace('(nan,', '(0.0,') \
-                .replace('(np.inf,', '(0.0,').replace('(inf,', '(0.0,')
-            pars = {} if pars is None else ast.literal_eval(p)
+            if pars is None:
+                pars = {}
+            else:
+                pars = ast.literal_eval(pars[0][0].replace('(np.nan,', '(0.0,').replace('(nan,', '(0.0,')
+                                        .replace('(np.inf,', '(0.0,').replace('(inf,', '(0.0,'))
             new_pars = {**pars, **new_pars}
             softw_gates = str(self.fitter.meas[i].softw_gates)
             if 'inf' in softw_gates:
