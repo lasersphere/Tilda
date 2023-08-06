@@ -107,7 +107,7 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>299</width>
+            <width>293</width>
             <height>45</height>
            </rect>
           </property>
@@ -322,7 +322,7 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>402</width>
+            <width>409</width>
             <height>45</height>
            </rect>
           </property>
@@ -556,9 +556,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-142</y>
-            <width>288</width>
-            <height>621</height>
+            <y>0</y>
+            <width>281</width>
+            <height>580</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="vert_options_layout" stretch="1,0,0,0,1,0,0,0,1,0,0,0,1">
@@ -600,6 +600,7 @@
               <widget class="QLabel" name="l_model_options">
                <property name="font">
                 <font>
+                 <weight>75</weight>
                  <bold>true</bold>
                 </font>
                </property>
@@ -691,9 +692,6 @@
               </item>
               <item row="4" column="0">
                <widget class="QCheckBox" name="check_qi">
-                <property name="enabled">
-                 <bool>false</bool>
-                </property>
                 <property name="toolTip">
                  <string>Consider quantum interference.</string>
                 </property>
@@ -800,6 +798,7 @@
             <widget class="QLabel" name="l_fit_options">
              <property name="font">
               <font>
+               <weight>75</weight>
                <bold>true</bold>
               </font>
              </property>
@@ -1142,6 +1141,7 @@
             <widget class="QLabel" name="l_plot_options">
              <property name="font">
               <font>
+               <weight>75</weight>
                <bold>true</bold>
               </font>
              </property>

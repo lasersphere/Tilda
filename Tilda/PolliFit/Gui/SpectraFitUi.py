@@ -310,7 +310,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
                               npeaks=self.s_npeaks.value(),
                               offset_per_track=self.check_offset_per_track.isChecked(),
                               offset_order=ast.literal_eval(self.edit_offset_order.text()),
-                              qi=self.check_qi.isChecked(),
+                              qi_config=dict(qi=self.check_qi.isChecked(), qi_path=os.path.dirname(self.dbpath)),
                               hf_config=hf_config)
         for file, run in zip(files, runs):
             config = TiTs.select_from_db(self.dbpath, 'config', 'FitPars', [['file', 'run'], [file, run]],
@@ -506,7 +506,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.s_npeaks.setValue(config['npeaks'])
         self.check_offset_per_track.setChecked(config['offset_per_track'])
         self.edit_offset_order.setText(str(config['offset_order']))
-        self.check_qi.setChecked(config['qi'])
+        self.check_qi.setChecked(config['qi_config']['qi'])
         self.check_hf_mixing.setChecked(config['hf_config']['enabled_l'] or config['hf_config']['enabled_u'])
 
     def set_lineshape(self):
@@ -551,7 +551,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
 
     def toogle_qi(self):
         for config in self.spectra_fit.configs:
-            config['qi'] = self.check_qi.isChecked()
+            config['qi_config']['qi'] = self.check_qi.isChecked()
 
     def toogle_hf_mixing(self):
         # for config in self.spectra_fit.configs:

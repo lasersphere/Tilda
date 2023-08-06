@@ -92,6 +92,9 @@ class Fitter(QObject):
         :returns: None.
         """
         cts = [np.array(t, dtype=float) for t in meas.cts]
+        track_slice = slice(None, None, 1)
+        if isinstance(st[1], int) and st[1] > -1:
+            track_slice = slice(st[1], st[1] + 1, 1)
 
         if not self.config['arithmetics']:
             self.config['arithmetics'] = '[{}]'.format(', '.join(st[0]))
@@ -102,15 +105,15 @@ class Fitter(QObject):
             if self.config['norm_scans']:
                 cts_sum = [t / n for t, n in zip(cts_sum, meas.nrScans)]
                 cts_d = [t / n for t, n in zip(cts_d, meas.nrScans)]
-            self.y.append(np.concatenate(cts_sum, axis=0))
-            self.yerr.append(np.concatenate(cts_d, axis=0))
+            self.y.append(np.concatenate(cts_sum[track_slice], axis=0))
+            self.yerr.append(np.concatenate(cts_d[track_slice], axis=0))
         else:
             cts_d = [self._yerr_from_array(t) for t in cts]
             if self.config['norm_scans']:
                 cts = [t / n for t, n in zip(cts, meas.nrScans)]
                 cts_d = [t / n for t, n in zip(cts_d, meas.nrScans)]
-            cts = np.concatenate(cts, axis=1)
-            cts_d = np.concatenate(cts_d, axis=1)
+            cts = np.concatenate(cts[track_slice], axis=1)
+            cts_d = np.concatenate(cts_d[track_slice], axis=1)
             y_mean = {'s{}'.format(i): cts[i] for i in range(self.n_scaler)
                       if 's{}'.format(i) in self.config['arithmetics']}
             y_samples = {'s{}'.format(i): norm.rvs(loc=cts[i], scale=cts_d[i], size=(n, cts[i].size))

@@ -41,10 +41,10 @@ def _get_iso_par_from_dict(par_dict, par):
 
 
 def gen_splitter_model(config, iso):
-    if config['qi'] and (config['hf_config']['enabled_l'] or config['hf_config']['enabled_u']):
+    if config['qi_config']['qi'] and (config['hf_config']['enabled_l'] or config['hf_config']['enabled_u']):
         pass
-    elif config['qi']:
-        pass
+    elif config['qi_config']['qi'] and iso.I > 0:
+        return mod.HyperfineQI, (iso.I, iso.Jl, iso.Ju, iso.name, config['qi_config']['qi_path'])
     elif config['hf_config']['enabled_l'] or config['hf_config']['enabled_u']:
         return mod.HyperfineMixed, (iso.I, iso.Jl, iso.Ju, iso.name, config['hf_config'])
     else:
@@ -53,11 +53,13 @@ def gen_splitter_model(config, iso):
 
 
 def gen_splitter_models(config, iso):
-    splitter, _args = gen_splitter_model(config, iso)
+    _splitter, _args = gen_splitter_model(config, iso)
+    splitter = [_splitter, ]
     args = [_args, ]
     _iso = iso.m
     while _iso is not None:
-        _, _args = gen_splitter_model(config, _iso)
+        _splitter, _args = gen_splitter_model(config, _iso)
+        splitter.append(_splitter)
         args.append(_args)
         _iso = _iso.m
     return splitter, args
@@ -65,8 +67,9 @@ def gen_splitter_models(config, iso):
 
 def gen_model(config, iso, spectra_fit=None):
     splitter, args = gen_splitter_models(config, iso)
+    shape = eval('mod.{}'.format(config['lineshape']))
     splitter_model = mod.SplitterSummed([
-        splitter(eval('mod.{}()'.format(config['lineshape'])), *_args) for _args in args])
+        _splitter(shape(), *_args) for _splitter, _args in zip(splitter, args)])
     if spectra_fit is not None:
         spectra_fit.splitter_models.append(splitter_model)
     npeaks_model = mod.NPeak(model=splitter_model, n_peaks=config['npeaks'])

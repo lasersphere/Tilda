@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'E:\Users\Patrick\Documents\Python Projects\Tilda\Tilda\PolliFit\Gui\Ui_SpectraFit.ui'
 #
-# Created by: PyQt5 UI code generator 5.13.2
+# Created by: PyQt5 UI code generator 5.14.1
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -57,7 +57,7 @@ class Ui_SpectraFit(object):
         self.scroll_files.setWidgetResizable(True)
         self.scroll_files.setObjectName("scroll_files")
         self.hor_file_options = QtWidgets.QWidget()
-        self.hor_file_options.setGeometry(QtCore.QRect(0, 0, 299, 45))
+        self.hor_file_options.setGeometry(QtCore.QRect(0, 0, 293, 45))
         self.hor_file_options.setObjectName("hor_file_options")
         self.hor_file_options_layout = QtWidgets.QHBoxLayout(self.hor_file_options)
         self.hor_file_options_layout.setObjectName("hor_file_options_layout")
@@ -131,7 +131,7 @@ class Ui_SpectraFit(object):
         self.scroll_parameters.setAlignment(QtCore.Qt.AlignLeading|QtCore.Qt.AlignLeft|QtCore.Qt.AlignVCenter)
         self.scroll_parameters.setObjectName("scroll_parameters")
         self.hor_parameters = QtWidgets.QWidget()
-        self.hor_parameters.setGeometry(QtCore.QRect(0, 0, 402, 45))
+        self.hor_parameters.setGeometry(QtCore.QRect(0, 0, 409, 45))
         self.hor_parameters.setObjectName("hor_parameters")
         self.hor_parameters_layout = QtWidgets.QHBoxLayout(self.hor_parameters)
         self.hor_parameters_layout.setContentsMargins(6, 6, 6, 6)
@@ -195,7 +195,7 @@ class Ui_SpectraFit(object):
         self.scroll_xontrol.setAlignment(QtCore.Qt.AlignCenter)
         self.scroll_xontrol.setObjectName("scroll_xontrol")
         self.vert_options = QtWidgets.QWidget()
-        self.vert_options.setGeometry(QtCore.QRect(0, -142, 288, 621))
+        self.vert_options.setGeometry(QtCore.QRect(0, 0, 281, 580))
         self.vert_options.setObjectName("vert_options")
         self.vert_options_layout = QtWidgets.QVBoxLayout(self.vert_options)
         self.vert_options_layout.setContentsMargins(6, 6, 6, 6)
@@ -212,6 +212,7 @@ class Ui_SpectraFit(object):
         self.l_model_options = QtWidgets.QLabel(self.vert_options)
         font = QtGui.QFont()
         font.setBold(True)
+        font.setWeight(75)
         self.l_model_options.setFont(font)
         self.l_model_options.setObjectName("l_model_options")
         self.hor_model.addWidget(self.l_model_options)
@@ -247,7 +248,6 @@ class Ui_SpectraFit(object):
         self.b_racah.setObjectName("b_racah")
         self.grid_model_layout.addWidget(self.b_racah, 5, 1, 1, 1)
         self.check_qi = QtWidgets.QCheckBox(self.grid_model)
-        self.check_qi.setEnabled(False)
         self.check_qi.setObjectName("check_qi")
         self.grid_model_layout.addWidget(self.check_qi, 4, 0, 1, 1)
         self.hor_npeaks = QtWidgets.QHBoxLayout()
@@ -291,6 +291,7 @@ class Ui_SpectraFit(object):
         self.l_fit_options = QtWidgets.QLabel(self.vert_options)
         font = QtGui.QFont()
         font.setBold(True)
+        font.setWeight(75)
         self.l_fit_options.setFont(font)
         self.l_fit_options.setObjectName("l_fit_options")
         self.vert_options_layout.addWidget(self.l_fit_options)
@@ -427,6 +428,7 @@ class Ui_SpectraFit(object):
         self.l_plot_options = QtWidgets.QLabel(self.vert_options)
         font = QtGui.QFont()
         font.setBold(True)
+        font.setWeight(75)
         self.l_plot_options.setFont(font)
         self.l_plot_options.setObjectName("l_plot_options")
         self.vert_options_layout.addWidget(self.l_plot_options)
