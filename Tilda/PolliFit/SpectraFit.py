@@ -88,9 +88,9 @@ def gen_model(config, iso, spectra_fit=None):
 
 class SpectraFit:
     def __init__(self, db, files, runs, configs, index_config,
-                 x_axis='ion frequencies', routine='curve_fit', absolute_sigma=False, guess_offset=True,
-                 cov_mc=False, samples_mc=100, arithmetics=None, save_to_disk=False, norm_scans=False,
-                 summed=False, linked=False, col_acol_config=None, save_to_db=False, x_as_freq=True,
+                 x_axis='ion frequencies', routine='curve_fit', absolute_sigma=False, unc_from_fit=False,
+                 guess_offset=True, cov_mc=False, samples_mc=100, arithmetics=None, save_to_disk=False,
+                 norm_scans=False, summed=False, linked=False, col_acol_config=None, save_to_db=False, x_as_freq=True,
                  fig_save_format='.png', zoom_data=False, fmt='.k', fontsize=10):
         self.db = db
         self.files = files
@@ -102,6 +102,7 @@ class SpectraFit:
 
         self.x_axis = x_axis
         self.routine = routine
+        self.unc_from_fit = unc_from_fit
         self.absolute_sigma = absolute_sigma
         self.cov_mc = cov_mc
         self.samples_mc = samples_mc
@@ -155,9 +156,10 @@ class SpectraFit:
 
     def gen_config(self):
         return dict(x_axis=self.x_axis, routine=self.routine, absolute_sigma=self.absolute_sigma,
-                    guess_offset=self.guess_offset, cov_mc=self.cov_mc, samples_mc=self.samples_mc,
-                    arithmetics=self.arithmetics, save_to_disk=self.save_to_disk, norm_scans=self.norm_scans,
-                    summed=self.summed, linked=self.linked, col_acol_config=self.col_acol_config)
+                    unc_from_fit=self.unc_from_fit, guess_offset=self.guess_offset, cov_mc=self.cov_mc,
+                    samples_mc=self.samples_mc, arithmetics=self.arithmetics, save_to_disk=self.save_to_disk,
+                    norm_scans=self.norm_scans, summed=self.summed, linked=self.linked,
+                    col_acol_config=self.col_acol_config)
 
     def gen_fitter(self):
         if not self.files:

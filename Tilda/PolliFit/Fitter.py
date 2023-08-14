@@ -43,7 +43,7 @@ class Fitter(QObject):
         self.iso = iso
         self.config = config
         if self.config is None:
-            self.config = dict(routine='curve_fit', absolute_sigma=False, guess_offset=True,
+            self.config = dict(routine='curve_fit', absolute_sigma=False, unc_from_fit=False, guess_offset=True,
                                cov_mc=False, samples_mc=100, arithmetics='', save_to_disk=False, norm_scans=False,
                                summed=False, linked=False, col_acol_config=COL_ACOL_CONFIG)
         self.run = '' if run is None else run
@@ -55,6 +55,7 @@ class Fitter(QObject):
 
         self.sizes = []
         self.x_raw, self.x, self.y, self.yerr = [], [], [], []
+        self.y_norm = []
         self.popt, self.pcov, self.info = [], [], {}
         self.gen_data()
 
@@ -74,6 +75,18 @@ class Fitter(QObject):
         meas, iso = self.meas[i], self.iso[i]
         return [[Ph.volt_to_rel_freq(x, iso.q, iso.mass, meas.laserFreq, iso.freq, meas.col)
                  for x in x_track] for x_track in meas.x]
+
+    def gen_y_sigma(self, linked, i):
+        if self.config['unc_from_fit'] and self.y_norm:
+            y_norm = np.concatenate(self.y_norm, axis=0) if linked else self.y_norm[i]
+
+            def y_sigma(x, y, y_fit, *params):
+                return np.sqrt(y_fit * y_norm)
+
+            return y_sigma
+        if linked:
+            return self.yerr
+        return self.yerr[i]
 
     @staticmethod
     def _yerr_from_array(a):
@@ -102,11 +115,14 @@ class Fitter(QObject):
             indexes = np.array(eval(self.config['arithmetics']), dtype=int)
             cts_sum = [np.sum(t[indexes, :], axis=0) for t in cts]
             cts_d = [self._yerr_from_array(t) for t in cts_sum]
+            cts_norm = [np.ones_like(t, dtype=float) for t in cts_sum]
             if self.config['norm_scans']:
+                cts_norm = [np.full_like(t, 1 / n, dtype=float) for t, n in zip(cts_sum, meas.nrScans)]
                 cts_sum = [t / n for t, n in zip(cts_sum, meas.nrScans)]
                 cts_d = [t / n for t, n in zip(cts_d, meas.nrScans)]
             self.y.append(np.concatenate(cts_sum[track_slice], axis=0))
             self.yerr.append(np.concatenate(cts_d[track_slice], axis=0))
+            self.y_norm.append(np.concatenate(cts_norm[track_slice], axis=0))
         else:
             cts_d = [self._yerr_from_array(t) for t in cts]
             if self.config['norm_scans']:
@@ -181,7 +197,7 @@ class Fitter(QObject):
         :returns: x_volt, x, y, yerr. The combined sorted data of the given measurements and fitting options.
         """
         self.sizes = []
-        self.x_raw, self.x, self.y, self.yerr = [], [], [], []
+        self.x_raw, self.x, self.y, self.yerr, self.y_norm = [], [], [], [], []
         for meas, st, iso in zip(self.meas, self.st, self.iso):
             data = meas.getArithSpec(*st, function=self.config['arithmetics'], eval_on=True)
             self.sizes.append(data[0].size)
@@ -243,7 +259,11 @@ class Fitter(QObject):
         if i is None:
             return [self.reduced_chi2(i) for i in range(self.size)]
         else:
-            return np.sum(self.residuals(i) ** 2 / self.yerr[i] ** 2) / self.n_dof(i)
+            y_err = self.yerr[i]
+            sigma_y = self.gen_y_sigma(False, i)
+            if callable(sigma_y):
+                y_err = sigma_y(self.x[i], self.y[i], self.models[i](self.x[i], *self.popt))
+            return np.sum(self.residuals(i) ** 2 / y_err ** 2) / self.n_dof(i)
 
     def n_dof(self, i=None):
         """ Calculate number of degrees of freedom """
@@ -267,8 +287,9 @@ class Fitter(QObject):
         info = dict(warn=[], err=[], chi2=[])
         popt, pcov = [], []
         for i, (meas, model, x, y, yerr) in enumerate(zip(self.meas, self.models, self.x, self.y, self.yerr)):
+            sigma_y = self.gen_y_sigma(False, i)
             _popt, _pcov, _info = fit(
-                model, x, y, sigma_y=yerr, report=True, routine=self.config['routine'],
+                model, x, y, sigma_y=sigma_y, report=True, routine=self.config['routine'],
                 absolute_sigma=self.config['absolute_sigma'], guess_offset=self.config['guess_offset'],
                 mc_sigma=self.config['samples_mc'] if self.config['cov_mc'] else 0)
             popt.append(_popt)
@@ -291,8 +312,9 @@ class Fitter(QObject):
     def fit_linked(self):
         info = dict(warn=[], err=[], chi2=[])
         model = Linked(self.models)
+        sigma_y = self.gen_y_sigma(True, None)
         _popt, _pcov, _info = fit(
-            model, self.x, self.y, sigma_y=self.yerr, report=True, routine=self.config['routine'],
+            model, self.x, self.y, sigma_y=sigma_y, report=True, routine=self.config['routine'],
             absolute_sigma=self.config['absolute_sigma'], guess_offset=self.config['guess_offset'],
             mc_sigma=self.config['samples_mc'] if self.config['cov_mc'] else 0)
 
@@ -301,7 +323,7 @@ class Fitter(QObject):
         for k in ['warn', 'err']:
             if _info[k]:
                 info[k] = list(range(self.size))
-        info['chi2'] = [self.reduced_chi2(i) for i in range(self.size)]
+        info['chi2'] = _info['chi2']  # [self.reduced_chi2(i) for i in range(self.size)]
 
         color = 'OKGREEN'
         if len(info['warn']) > 0:

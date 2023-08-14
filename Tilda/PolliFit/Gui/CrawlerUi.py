@@ -15,6 +15,9 @@ from Tilda.PolliFit.Gui.Ui_Crawler import Ui_Crawler
 from Tilda.PolliFit.Measurement.XMLImporter import METADATA_SYSTEMS, METADATA_CHANNELS
 
 
+MAX_CHANNEL_FILES = 20
+
+
 class CrawlerUi(QtWidgets.QWidget, Ui_Crawler):
 
     def __init__(self):
@@ -22,6 +25,7 @@ class CrawlerUi(QtWidgets.QWidget, Ui_Crawler):
         self.setupUi(self)
         
         self.bcrawl.clicked.connect(self.crawl)
+        self.b_load_channels.clicked.connect(lambda: self.load_channels_from_folder(force=True))
         self.pushButton_save_sql.clicked.connect(self.save_sql_cmd)
         self.pushButton_load_sql.clicked.connect(self.load_sql_cmd)
 
@@ -36,7 +40,10 @@ class CrawlerUi(QtWidgets.QWidget, Ui_Crawler):
         channels = set()
         p = XMLParser(huge_tree=True)
         root = parse(file, parser=p)
-        header = root.find('tracks').find('track0').find('header')
+        try:
+            header = root.find('tracks').find('track0').find('header')
+        except AttributeError:
+            return channels
         pre_dur_post = ['preScan', 'duringScan', 'postScan']
         for msys in METADATA_SYSTEMS:
             _msys = header.find(msys)
@@ -58,9 +65,15 @@ class CrawlerUi(QtWidgets.QWidget, Ui_Crawler):
                         channels = channels.union(set(f'{dev.tag}.{ch.tag}' for ch in dev))
         return channels
 
-    def load_channels_from_folder(self):
+    def load_channels_from_folder(self, force=False):
         files = list(os.path.join(_files[0], f) for _files in os.walk(os.path.dirname(self.dbpath))
                      for f in _files[2] if os.path.splitext(f)[1] == '.xml')
+        if len(files) > MAX_CHANNEL_FILES and not force:
+            self.l_load_channels.setText(f'Number of xml files exceeded {MAX_CHANNEL_FILES}.'
+                                         f' Please load channels manually.')
+            files = []
+        if files:
+            self.l_load_channels.setText('')
         channels = set()
         for f in files:
             channels = channels.union(self.get_channels_from_xml(f))
@@ -92,7 +105,7 @@ class CrawlerUi(QtWidgets.QWidget, Ui_Crawler):
 
     def dbChange(self, dbpath):
         self.dbpath = dbpath
-        self.load_channels_from_folder()
+        self.load_channels_from_folder(force=False)
         sql_file = os.path.join(os.path.split(self.dbpath)[0], 'sql_cmd.txt')
         if os.path.isfile(sql_file):
             self.load_sql_cmd(False, path=sql_file)

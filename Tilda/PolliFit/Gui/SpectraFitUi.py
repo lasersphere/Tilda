@@ -100,10 +100,11 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
             lambda index, _suppress=False: self.set_x_axis(suppress_plot=_suppress))
         self.c_routine.currentIndexChanged.connect(self.set_routine)
         self.check_chi2.stateChanged.connect(self.toggle_chi2)
+        self.check_delta_f.stateChanged.connect(self.toggle_delta_f)
         self.check_guess_offset.stateChanged.connect(self.toggle_guess_offset)
         self.check_cov_mc.stateChanged.connect(self.toggle_cov_mc)
         self.s_samples_mc.valueChanged.connect(self.set_samples_mc)
-        self.edit_arithmetics.editingFinished.connect(self.set_arithmetics)
+        self.edit_arithmetics.editingFinished.connect(self.set_arithmetics_toggle_delta_f)
         self.check_arithmetics.stateChanged.connect(self.toggle_arithmetics)
         self.b_trsplot.clicked.connect(self.open_trsplot)
         self.b_trs.clicked.connect(self.open_trs)
@@ -349,6 +350,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         kwargs = dict(x_axis=self.c_xaxis.currentText(),
                       routine=self.c_routine.currentText(),
                       absolute_sigma=not self.check_chi2.isChecked(),
+                      unc_from_fit=self.check_delta_f.isChecked(),
                       guess_offset=self.check_guess_offset.isChecked(),
                       cov_mc=self.check_cov_mc.isChecked(),
                       samples_mc=self.s_samples_mc.value(),
@@ -372,7 +374,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         if self.check_arithmetics.isChecked():
             self.update_arithmetics()
         else:
-            self.set_arithmetics(suppress_plot=True)
+            self.set_arithmetics_toggle_delta_f(suppress_plot=True)
         self.update_pars(suppress_plot=suppress_plot)
         self.edit_offset_order.setText(str(self.spectra_fit.configs[self.index_config]['offset_order']))
 
@@ -584,6 +586,9 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
     def toggle_chi2(self):
         self.spectra_fit.absolute_sigma = not self.check_chi2.isChecked()
 
+    def toggle_delta_f(self):
+        self.spectra_fit.unc_from_fit = self.check_delta_f.isChecked()
+
     def set_x_axis(self, suppress_plot=False):
         self.spectra_fit = self.gen_spectra_fit()
         self.plot_auto(suppress_plot)
@@ -665,6 +670,14 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
             self.plot_auto(suppress_plot)
         except (ValueError, TypeError, SyntaxError, NameError):
             self._set_arithmetics(self.spectra_fit.arithmetics)
+
+    def set_arithmetics_toggle_delta_f(self, suppress_plot=False):
+        self.set_arithmetics(suppress_plot=suppress_plot)
+        if self.spectra_fit.arithmetics[0] == '[':
+            self.check_delta_f.setEnabled(True)
+        else:
+            self.check_delta_f.setChecked(False)
+            self.check_delta_f.setEnabled(False)
 
     def update_arithmetics(self):
         self.edit_arithmetics.blockSignals(True)
