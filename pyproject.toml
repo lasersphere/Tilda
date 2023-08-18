@@ -56,13 +56,13 @@ dependencies = [
     'typing-extensions >= 3.10.0.0',
     'requests >= 2.28.2',
     'influxdb >= 5.3.1',
-    'pycol@git+https://github.com/lasersphere/pycol >= 0.1.1'
+    'qspec >= 0.1.1'
 ]
 
 [project.urls]
 homepage = 'https://www.ikp.tu-darmstadt.de/forschung_kernphysik/gruppen_kernphysik/experiment/ag_w_noertershaeuser/index.en.jsp'
-repository = 'http://gitlab.ikp.physik.tu-darmstadt.de/Lasersphere/Tilda'
-bug-tracker = 'http://gitlab.ikp.physik.tu-darmstadt.de/Lasersphere/Tilda/issues'
+source = 'https://github.com/lasersphere/Tilda'
+tracker = 'https://github.com/lasersphere/Tilda/issues'
 
 [tool.setuptools.package-data]
 '*' = ['*.dll', '*.lvbitx', '*.txt', '*.wav', '*.jpg', '*.ico']

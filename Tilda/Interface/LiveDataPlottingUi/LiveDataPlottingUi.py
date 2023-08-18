@@ -20,7 +20,7 @@ from datetime import datetime, timedelta
 import numpy as np
 from PyQt5 import QtWidgets, QtCore, QtGui
 # noinspection PyUnresolvedReferences
-from pycol.models import NPeak, Offset, Amplifier, Voigt, Lorentz, Gauss, fwhm_voigt, fwhm_voigt_d
+from qspec.models import NPeak, Offset, Amplifier, Voigt, Lorentz, Gauss, fwhm_voigt, fwhm_voigt_d
 
 import Tilda.Application.Config as Cfg
 from Tilda.Interface.LiveDataPlottingUi.PreDurPostMeasUi import PrePostTabWidget

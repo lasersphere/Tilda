@@ -10,7 +10,7 @@ import sqlite3
 from scipy.stats import norm
 import itertools as it
 from PyQt5.QtCore import QObject, pyqtSignal
-from pycol.models import Linked, fit
+from qspec.models import Linked, fit
 
 # noinspection PyUnresolvedReferences
 from Tilda.PolliFit.FitRoutines import curve_fit, const

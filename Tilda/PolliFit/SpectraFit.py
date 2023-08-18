@@ -8,7 +8,7 @@ import os
 import ast
 import sqlite3
 import numpy as np
-import pycol.models as mod
+import qspec.models as mod
 
 import Tilda.PolliFit.TildaTools as TiTs
 from Tilda.PolliFit import MPLPlotter as Plot

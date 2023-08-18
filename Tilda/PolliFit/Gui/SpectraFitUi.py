@@ -12,7 +12,7 @@ from numpy import inf
 from PyQt5 import QtWidgets, QtCore
 # noinspection PyProtectedMember
 from matplotlib.axes._base import _process_plot_format
-from pycol.models import SPECTRA, CONVOLVE
+from qspec.models import SPECTRA, CONVOLVE
 
 from Tilda.PolliFit.Gui.Ui_SpectraFit import Ui_SpectraFit
 from Tilda.PolliFit.Gui.TRSConfigUi import TRSConfigUi

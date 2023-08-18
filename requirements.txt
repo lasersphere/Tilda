@@ -28,4 +28,4 @@ six >= 1.16.0
 typing-extensions >= 3.10.0.0
 requests >= 2.28.2
 influxdb >= 5.3.1
-git+https://github.com/lasersphere/pycol >= 0.1.1
+qspec >= 0.1.1

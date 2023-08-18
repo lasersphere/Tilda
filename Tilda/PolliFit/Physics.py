@@ -500,7 +500,7 @@ def HFInt(I, Jl, Ju, transitions, old=True):
             for (Fl, Fu), *r in transitions]
 
 
-def a(I, Jl, Ju, Fl, Fu):  # from pycol
+def a(I, Jl, Ju, Fl, Fu):  # from qspec
     return np.around((2 * Fl + 1) * (2 * Fu + 1) * (2 * Ju + 1) / (3 * (2 * Jl + 1) * (2 * I + 1))
                      * sixJ(Jl, Fl, I, Fu, Ju, 1) ** 2, decimals=9)
 
