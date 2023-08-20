@@ -121,6 +121,31 @@ def doppler_e_d(f, f_d, e, e_d, m, m_d, alpha, rest_frame=True):
     return np.sqrt((f_d * val / f) ** 2 + (f ** 2 / val ** 2 * val_gamma * gamma_d) ** 2)
 
 
+def col_acol_rest_frame(f_c, f_a, m):
+    """
+    :param f_c: The frequency of the collinear photon in the rest-frame (MHz).
+    :param f_a: The frequency of the anti-collinear photon in the rest-frame (MHz).
+    :param m: The mass of the particle (u).
+    :returns: The frequency equivalent of the energy absorbed by a particle with mass 'm' (MHz).
+    """
+    f = np.sqrt(f_c * f_a)
+    return f - recoil(f, m)
+
+
+def col_acol_rest_frame_d(f_c, f_c_d, f_a, f_a_d):
+    """
+    :param f_c: The frequency of the collinear photon in the rest-frame (MHz).
+    :param f_c_d: The uncertainty of the frequency of the collinear photon in the rest-frame (MHz).
+    :param f_a: The frequency of the anti-collinear photon in the rest-frame (MHz).
+    :param f_a_d: The uncertainty of the frequency of the anti-collinear photon in the rest-frame (MHz).
+    :returns: The uncertainty of the frequency equivalent of the energy absorbed by a particle with mass 'm',
+     neglecting the uncertainty of the photon recoil (MHz).
+    """
+    f = np.sqrt(f_c * f_a)
+    f_d = np.sqrt((f_c * f_a_d) ** 2 + (f_c_d * f_a) ** 2) / (2 * f)
+    return f_d
+
+
 def col_acol_ec_ea(f_laser_c, f_laser_a, e_c, e_a, m):
     """
     :param f_laser_c: The frequency of the collinear photon in the lab-frame (MHz).
