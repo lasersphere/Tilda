@@ -422,6 +422,7 @@ class SpectraFit:
             if 'inf' in softw_gates:
                 self.set_softw_gates(i, self.fitter.meas[i].softw_gates)
                 softw_gates = str(self.fitter.meas[i].softw_gates)
+            config['qi_config'].pop('qi_path', None)
             execute(cur, 'INSERT OR REPLACE INTO FitPars (file, run, softw_gates, config, pars)'
                          ' VALUES (?, ?, ?, ?, ?)', (file, run, softw_gates, str(config), str(new_pars)))
         con.commit()

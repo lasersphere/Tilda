@@ -304,6 +304,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
 
     def _gen_configs(self, files, runs):
         configs = []
+        qi_config = dict(qi=self.check_qi.isChecked(), qi_path=os.path.dirname(self.dbpath))
         hf_config = dict(enabled_l=False, enabled_u=False, Jl=[0.5, ], Ju=[0.5, ],
                          Tl=[[1.]], Tu=[[1.]], fl=[[0.]], fu=[[0.]], mu=0.)
         current_config = dict(lineshape=self.c_lineshape.currentText(),
@@ -311,7 +312,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
                               npeaks=self.s_npeaks.value(),
                               offset_per_track=self.check_offset_per_track.isChecked(),
                               offset_order=ast.literal_eval(self.edit_offset_order.text()),
-                              qi_config=dict(qi=self.check_qi.isChecked(), qi_path=os.path.dirname(self.dbpath)),
+                              qi_config=qi_config,
                               hf_config=hf_config)
         for file, run in zip(files, runs):
             config = TiTs.select_from_db(self.dbpath, 'config', 'FitPars', [['file', 'run'], [file, run]],
@@ -326,6 +327,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
                     config['lineshape'] = 'Voigt'
                 if config['convolve'] not in CONVOLVE:
                     config['convolve'] = 'None'
+                config['qi_config'] = {**qi_config, **config['qi_config']}
                 config['hf_config'] = {**hf_config, **config['hf_config']}
             configs.append(config)
         if configs:
