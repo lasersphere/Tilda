@@ -323,7 +323,7 @@ class Fitter(QObject):
         for k in ['warn', 'err']:
             if _info[k]:
                 info[k] = list(range(self.size))
-        info['chi2'] = _info['chi2']  # [self.reduced_chi2(i) for i in range(self.size)]
+        info['chi2'] = [self.reduced_chi2(i) for i in range(self.size)]  # _info['chi2']
 
         color = 'OKGREEN'
         if len(info['warn']) > 0:
