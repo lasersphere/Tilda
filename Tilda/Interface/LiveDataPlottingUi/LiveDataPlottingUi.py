@@ -20,6 +20,8 @@ from datetime import datetime, timedelta
 import numpy as np
 import warnings
 from PyQt5 import QtWidgets, QtCore, QtGui
+# noinspection PyUnresolvedReferences
+from qspec.models import NPeak, Offset, Amplifier, Voigt, Lorentz, Gauss, fwhm_voigt, fwhm_voigt_d
 
 import Tilda.Application.Config as Cfg
 from Tilda.Interface.LiveDataPlottingUi.PreDurPostMeasUi import PrePostTabWidget
@@ -32,9 +34,6 @@ from Tilda.PolliFit.Tools import clip_val_with_unc
 from Tilda.PolliFit import PyQtGraphPlotter as Pg
 from Tilda.PolliFit.TildaTools import create_scan_dict_from_spec_data
 from Tilda.PolliFit.Measurement.XMLImporter import XMLImporter
-from Tilda.PolliFit.Models.Base import NPeak, Offset, Amplifier
-# noinspection PyUnresolvedReferences
-from Tilda.PolliFit.Models.Spectrum import Voigt, Lorentz, Gauss, fwhm_voigt, fwhm_voigt_d
 
 
 class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting):

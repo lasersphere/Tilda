@@ -322,7 +322,7 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>408</width>
+            <width>409</width>
             <height>45</height>
            </rect>
           </property>
@@ -556,9 +556,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-189</y>
-            <width>283</width>
-            <height>580</height>
+            <y>0</y>
+            <width>281</width>
+            <height>601</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="vert_options_layout" stretch="1,0,0,0,1,0,0,0,1,0,0,0,1">
@@ -692,9 +692,6 @@
               </item>
               <item row="4" column="0">
                <widget class="QCheckBox" name="check_qi">
-                <property name="enabled">
-                 <bool>false</bool>
-                </property>
                 <property name="toolTip">
                  <string>Consider quantum interference.</string>
                 </property>
@@ -825,223 +822,6 @@
               <property name="bottomMargin">
                <number>0</number>
               </property>
-              <item row="0" column="1">
-               <widget class="QComboBox" name="c_routine">
-                <property name="toolTip">
-                 <string>Choose the fit routine.</string>
-                </property>
-                <item>
-                 <property name="text">
-                  <string>curve_fit</string>
-                 </property>
-                </item>
-               </widget>
-              </item>
-              <item row="4" column="0">
-               <layout class="QHBoxLayout" name="hor_trs">
-                <item>
-                 <widget class="QLabel" name="l_trs">
-                  <property name="text">
-                   <string>TRS</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QPushButton" name="b_trs">
-                  <property name="toolTip">
-                   <string>Configure the time-gates directly without opening the Tilda plot (Only applied to active file).</string>
-                  </property>
-                  <property name="text">
-                   <string>config ...</string>
-                  </property>
-                 </widget>
-                </item>
-               </layout>
-              </item>
-              <item row="2" column="0">
-               <widget class="QCheckBox" name="check_cov_mc">
-                <property name="toolTip">
-                 <string>Calculate the covariance matrix from Monte-Carlo sampling of the data.</string>
-                </property>
-                <property name="text">
-                 <string>cov. from Monte-Carlo</string>
-                </property>
-               </widget>
-              </item>
-              <item row="8" column="1">
-               <widget class="QCheckBox" name="check_save_figure">
-                <property name="toolTip">
-                 <string>Save a plot of the fit to the data for each fitted file.</string>
-                </property>
-                <property name="text">
-                 <string>save figure</string>
-                </property>
-               </widget>
-              </item>
-              <item row="6" column="0">
-               <widget class="QCheckBox" name="check_summed">
-                <property name="enabled">
-                 <bool>false</bool>
-                </property>
-                <property name="text">
-                 <string>summed</string>
-                </property>
-               </widget>
-              </item>
-              <item row="8" column="0">
-               <widget class="QCheckBox" name="check_save_to_db">
-                <property name="toolTip">
-                 <string>Save fit results to the database.</string>
-                </property>
-                <property name="text">
-                 <string>save to db</string>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="1">
-               <layout class="QHBoxLayout" name="hor_samples" stretch="1,0">
-                <item>
-                 <widget class="QSpinBox" name="s_samples_mc">
-                  <property name="enabled">
-                   <bool>false</bool>
-                  </property>
-                  <property name="minimum">
-                   <number>100</number>
-                  </property>
-                  <property name="maximum">
-                   <number>1000000</number>
-                  </property>
-                  <property name="singleStep">
-                   <number>100</number>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QLabel" name="l_samples_mc">
-                  <property name="enabled">
-                   <bool>false</bool>
-                  </property>
-                  <property name="text">
-                   <string># samples</string>
-                  </property>
-                 </widget>
-                </item>
-               </layout>
-              </item>
-              <item row="3" column="1">
-               <layout class="QHBoxLayout" name="hor_arithmetics">
-                <item>
-                 <widget class="QLabel" name="l_arithmetics">
-                  <property name="text">
-                   <string>arithmetics</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QCheckBox" name="check_arithmetics">
-                  <property name="toolTip">
-                   <string>Use the expression specified for the selected run in the database.</string>
-                  </property>
-                  <property name="text">
-                   <string>db</string>
-                  </property>
-                  <property name="checked">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-               </layout>
-              </item>
-              <item row="7" column="0">
-               <layout class="QHBoxLayout" name="hor_adjust" stretch="0,0">
-                <property name="spacing">
-                 <number>3</number>
-                </property>
-                <item>
-                 <widget class="QCheckBox" name="check_col_acol">
-                  <property name="toolTip">
-                   <string>Extract absolute transition frequencies by fitting collinear and anti-collinear files.</string>
-                  </property>
-                  <property name="text">
-                   <string>col/acol</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QPushButton" name="b_col_acol">
-                  <property name="toolTip">
-                   <string>Configure the col/acol fit routine.</string>
-                  </property>
-                  <property name="text">
-                   <string>config ...</string>
-                  </property>
-                 </widget>
-                </item>
-               </layout>
-              </item>
-              <item row="1" column="0">
-               <widget class="QCheckBox" name="check_guess_offset">
-                <property name="toolTip">
-                 <string>Guess initial 1. and 2. order offset parameters upon fitting.</string>
-                </property>
-                <property name="text">
-                 <string>guess offset</string>
-                </property>
-                <property name="checked">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="4" column="1">
-               <layout class="QHBoxLayout" name="hor_trsplot" stretch="0,1">
-                <item>
-                 <widget class="QLabel" name="l_trsplot">
-                  <property name="font">
-                   <font>
-                    <pointsize>12</pointsize>
-                   </font>
-                  </property>
-                  <property name="text">
-                   <string>&lt;nobr&gt;&amp;larr;&lt;/nobr&gt;</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QPushButton" name="b_trsplot">
-                  <property name="toolTip">
-                   <string>Open the TRS plot to configure the time-gates (Only applied to active file).</string>
-                  </property>
-                  <property name="text">
-                   <string>open trs plot</string>
-                  </property>
-                 </widget>
-                </item>
-               </layout>
-              </item>
-              <item row="1" column="1">
-               <layout class="QHBoxLayout" name="hor_chi2" stretch="0,1">
-                <item>
-                 <widget class="QCheckBox" name="check_chi2">
-                  <property name="text">
-                   <string/>
-                  </property>
-                  <property name="checked">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QLabel" name="l_chi2">
-                  <property name="toolTip">
-                   <string>Scale the covariance matrix for &lt;nobr&gt;&amp;chi; &lt;sup&gt;2&lt;/sup&gt; = 1&lt;/nobr&gt;.</string>
-                  </property>
-                  <property name="text">
-                   <string>&lt;nobr&gt;&amp;Delta; for &amp;chi; &lt;sup&gt;2&lt;/sup&gt; = 1&lt;/nobr&gt;</string>
-                  </property>
-                 </widget>
-                </item>
-               </layout>
-              </item>
               <item row="0" column="0">
                <layout class="QHBoxLayout" name="hor_xaxis" stretch="0,1">
                 <item>
@@ -1071,21 +851,19 @@
                   </item>
                   <item>
                    <property name="text">
-                    <string>DAC volt (TODO)</string>
+                    <string>DAC voltages</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>voltages</string>
                    </property>
                   </item>
                  </widget>
                 </item>
                </layout>
               </item>
-              <item row="3" column="0">
-               <widget class="QLineEdit" name="edit_arithmetics">
-                <property name="toolTip">
-                 <string>Combine the scalers into a sum via a list of indices or into a arithmetic expression via the variables &lt;i&gt;s0&lt;/i&gt;, &lt;i&gt;s1&lt;/i&gt;, ... .</string>
-                </property>
-               </widget>
-              </item>
-              <item row="6" column="1">
+              <item row="7" column="1">
                <widget class="QCheckBox" name="check_linked">
                 <property name="toolTip">
                  <string>Use linked fitting.</string>
@@ -1095,14 +873,63 @@
                 </property>
                </widget>
               </item>
-              <item row="5" column="0">
-               <widget class="QCheckBox" name="check_norm_scans">
+              <item row="3" column="0">
+               <widget class="QCheckBox" name="check_cov_mc">
+                <property name="toolTip">
+                 <string>Calculate the covariance matrix from Monte-Carlo sampling of the data.</string>
+                </property>
                 <property name="text">
-                 <string>normalize to # scans</string>
+                 <string>cov. from Monte-Carlo</string>
                 </property>
                </widget>
               </item>
-              <item row="7" column="1">
+              <item row="5" column="1">
+               <layout class="QHBoxLayout" name="hor_trsplot" stretch="0,1">
+                <item>
+                 <widget class="QLabel" name="l_trsplot">
+                  <property name="font">
+                   <font>
+                    <pointsize>12</pointsize>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>&lt;nobr&gt;&amp;larr;&lt;/nobr&gt;</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="b_trsplot">
+                  <property name="toolTip">
+                   <string>Open the TRS plot to configure the time-gates (Only applied to active file).</string>
+                  </property>
+                  <property name="text">
+                   <string>open trs plot</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item row="4" column="0">
+               <widget class="QLineEdit" name="edit_arithmetics">
+                <property name="toolTip">
+                 <string>Combine the scalers into a sum via a list of indices or into a arithmetic expression via the variables &lt;i&gt;s0&lt;/i&gt;, &lt;i&gt;s1&lt;/i&gt;, ... .</string>
+                </property>
+                <property name="readOnly">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="9" column="1">
+               <widget class="QCheckBox" name="check_save_figure">
+                <property name="toolTip">
+                 <string>Save a plot of the fit to the data for each fitted file.</string>
+                </property>
+                <property name="text">
+                 <string>save figure</string>
+                </property>
+               </widget>
+              </item>
+              <item row="8" column="1">
                <widget class="QCheckBox" name="check_save_to_disk">
                 <property name="toolTip">
                  <string>Save fit results to the disk.</string>
@@ -1111,6 +938,211 @@
                  <string>save to disk</string>
                 </property>
                </widget>
+              </item>
+              <item row="6" column="0">
+               <widget class="QCheckBox" name="check_norm_scans">
+                <property name="text">
+                 <string>normalize to # scans</string>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="0">
+               <layout class="QHBoxLayout" name="hor_trs">
+                <item>
+                 <widget class="QLabel" name="l_trs">
+                  <property name="text">
+                   <string>TRS</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="b_trs">
+                  <property name="toolTip">
+                   <string>Configure the time-gates directly without opening the Tilda plot (Only applied to active file).</string>
+                  </property>
+                  <property name="text">
+                   <string>config ...</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item row="9" column="0">
+               <widget class="QCheckBox" name="check_save_to_db">
+                <property name="toolTip">
+                 <string>Save fit results to the database.</string>
+                </property>
+                <property name="text">
+                 <string>save to db</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="QCheckBox" name="check_guess_offset">
+                <property name="toolTip">
+                 <string>Guess initial 1. and 2. order offset parameters upon fitting.</string>
+                </property>
+                <property name="text">
+                 <string>guess offset</string>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="7" column="0">
+               <widget class="QCheckBox" name="check_summed">
+                <property name="enabled">
+                 <bool>false</bool>
+                </property>
+                <property name="text">
+                 <string>summed</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="1">
+               <layout class="QHBoxLayout" name="hor_samples" stretch="1,0">
+                <item>
+                 <widget class="QSpinBox" name="s_samples_mc">
+                  <property name="enabled">
+                   <bool>false</bool>
+                  </property>
+                  <property name="minimum">
+                   <number>100</number>
+                  </property>
+                  <property name="maximum">
+                   <number>1000000</number>
+                  </property>
+                  <property name="singleStep">
+                   <number>100</number>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="l_samples_mc">
+                  <property name="enabled">
+                   <bool>false</bool>
+                  </property>
+                  <property name="text">
+                   <string># samples</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item row="1" column="1">
+               <layout class="QHBoxLayout" name="hor_chi2" stretch="0,1">
+                <item>
+                 <widget class="QCheckBox" name="check_chi2">
+                  <property name="toolTip">
+                   <string>Scale the covariance matrix for &lt;nobr&gt;&amp;chi; &lt;sup&gt;2&lt;/sup&gt; = 1&lt;/nobr&gt;.</string>
+                  </property>
+                  <property name="text">
+                   <string/>
+                  </property>
+                  <property name="checked">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="l_chi2">
+                  <property name="toolTip">
+                   <string>Scale the covariance matrix for &lt;nobr&gt;&amp;chi; &lt;sup&gt;2&lt;/sup&gt; = 1&lt;/nobr&gt;.</string>
+                  </property>
+                  <property name="text">
+                   <string>&lt;nobr&gt;&amp;Delta; for &amp;chi; &lt;sup&gt;2&lt;/sup&gt; = 1&lt;/nobr&gt;</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item row="4" column="1">
+               <layout class="QHBoxLayout" name="hor_arithmetics">
+                <item>
+                 <widget class="QLabel" name="l_arithmetics">
+                  <property name="text">
+                   <string>arithmetics</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="check_arithmetics">
+                  <property name="toolTip">
+                   <string>Use the expression specified for the selected run in the database.</string>
+                  </property>
+                  <property name="text">
+                   <string>db</string>
+                  </property>
+                  <property name="checked">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item row="2" column="1">
+               <layout class="QHBoxLayout" name="hor_delta_f" stretch="0,1">
+                <item>
+                 <widget class="QCheckBox" name="check_delta_f">
+                  <property name="toolTip">
+                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Calculate the y-axis uncertainties from the fit function. This yields better agreement with data for low statistics (y &amp;lt; 10). Option not available if arithmetics is not a list of scalers.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                  </property>
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="l_delta_f">
+                  <property name="toolTip">
+                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Calculate the y-axis uncertainties from the fit function. This yields better agreement with data for low numbers of counts. Option not available if arithmetics is not a list of scalers.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                  </property>
+                  <property name="text">
+                   <string>&lt;nobr&gt;&amp;Delta; from fit (Poisson)&lt;/nobr&gt;</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item row="0" column="1">
+               <widget class="QComboBox" name="c_routine">
+                <property name="toolTip">
+                 <string>Choose the fit routine.</string>
+                </property>
+                <item>
+                 <property name="text">
+                  <string>curve_fit</string>
+                 </property>
+                </item>
+               </widget>
+              </item>
+              <item row="8" column="0">
+               <layout class="QHBoxLayout" name="hor_adjust" stretch="0,0">
+                <property name="spacing">
+                 <number>3</number>
+                </property>
+                <item>
+                 <widget class="QCheckBox" name="check_col_acol">
+                  <property name="toolTip">
+                   <string>Extract absolute transition frequencies by fitting collinear and anti-collinear files.</string>
+                  </property>
+                  <property name="text">
+                   <string>col/acol</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="b_col_acol">
+                  <property name="toolTip">
+                   <string>Configure the col/acol fit routine.</string>
+                  </property>
+                  <property name="text">
+                   <string>config ...</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
               </item>
              </layout>
             </widget>
@@ -1197,19 +1229,6 @@
                 </property>
                 <property name="text">
                  <string>plot</string>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="0">
-               <widget class="QCheckBox" name="check_x_as_freq">
-                <property name="toolTip">
-                 <string>Display the x-axis in frequencies or voltages (Only changes plot).</string>
-                </property>
-                <property name="text">
-                 <string>x as freq.</string>
-                </property>
-                <property name="checked">
-                 <bool>true</bool>
                 </property>
                </widget>
               </item>
@@ -1302,6 +1321,22 @@
                 </property>
                 <property name="text">
                  <string>zoom data</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="0">
+               <widget class="QCheckBox" name="check_x_as_freq">
+                <property name="enabled">
+                 <bool>false</bool>
+                </property>
+                <property name="toolTip">
+                 <string>Display the x-axis in frequencies or voltages (Only changes plot).</string>
+                </property>
+                <property name="text">
+                 <string>x as freq.</string>
+                </property>
+                <property name="tristate">
+                 <bool>true</bool>
                 </property>
                </widget>
               </item>

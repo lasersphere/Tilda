@@ -2,17 +2,17 @@
 Created on 18.02.2022
 
 @author: Patrick Mueller
-
-TODO: Changing the model config, immediate action?
-TODO: Arithmetics.
 """
 
 import os
 import ast
 from copy import deepcopy
+# noinspection PyUnresolvedReferences
+from numpy import inf
 from PyQt5 import QtWidgets, QtCore
 # noinspection PyProtectedMember
 from matplotlib.axes._base import _process_plot_format
+from qspec.models import SPECTRA, CONVOLVE
 
 from Tilda.PolliFit.Gui.Ui_SpectraFit import Ui_SpectraFit
 from Tilda.PolliFit.Gui.TRSConfigUi import TRSConfigUi
@@ -20,11 +20,10 @@ from Tilda.PolliFit.Gui.ColAcolConfigUi import ColAcolConfigUi
 from Tilda.PolliFit.Gui.HFMixingConfigUi import HFMixingConfigUi
 from Tilda.PolliFit.SpectraFit import SpectraFit
 from Tilda.PolliFit.Fitter import COL_ACOL_CONFIG
-from Tilda.PolliFit.Models.Spectrum import SPECTRA
-from Tilda.PolliFit.Models.Convolved import CONVOLVE
 from Tilda.PolliFit import TildaTools as TiTs
 
 colors = ['b', 'g', 'r', 'x', 'm', 'y', 'k']
+inf_str = ['PINF', 'Infinity', 'infty', 'Inf', 'inf']
 
 
 class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
@@ -32,6 +31,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
     def __init__(self):
         super(SpectraFitUi, self).__init__()
         self.setupUi(self)
+        self.check_x_as_freq.setCheckState(1)  # currently not used.
 
         self.hf_mixing_config_ui = None
         self.trs_config_ui = None
@@ -100,10 +100,11 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
             lambda index, _suppress=False: self.set_x_axis(suppress_plot=_suppress))
         self.c_routine.currentIndexChanged.connect(self.set_routine)
         self.check_chi2.stateChanged.connect(self.toggle_chi2)
+        self.check_delta_f.stateChanged.connect(self.toggle_delta_f)
         self.check_guess_offset.stateChanged.connect(self.toggle_guess_offset)
         self.check_cov_mc.stateChanged.connect(self.toggle_cov_mc)
         self.s_samples_mc.valueChanged.connect(self.set_samples_mc)
-        self.edit_arithmetics.editingFinished.connect(self.set_arithmetics)
+        self.edit_arithmetics.editingFinished.connect(self.set_arithmetics_toggle_delta_f)
         self.check_arithmetics.stateChanged.connect(self.toggle_arithmetics)
         self.b_trsplot.clicked.connect(self.open_trsplot)
         self.b_trs.clicked.connect(self.open_trs)
@@ -225,6 +226,8 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         if item is not None:
             item.setForeground(QtCore.Qt.GlobalColor.black)
         if items:
+            for item in items:
+                item.setForeground(QtCore.Qt.GlobalColor.black)
             items[self.index_load].setForeground(QtCore.Qt.GlobalColor.blue)
             self.index_marked = self.list_files.row(items[self.index_load])
             model_file = items[self.index_load].text()
@@ -301,6 +304,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
 
     def _gen_configs(self, files, runs):
         configs = []
+        qi_config = dict(qi=self.check_qi.isChecked(), qi_path=os.path.dirname(self.dbpath))
         hf_config = dict(enabled_l=False, enabled_u=False, Jl=[0.5, ], Ju=[0.5, ],
                          Tl=[[1.]], Tu=[[1.]], fl=[[0.]], fu=[[0.]], mu=0.)
         current_config = dict(lineshape=self.c_lineshape.currentText(),
@@ -308,7 +312,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
                               npeaks=self.s_npeaks.value(),
                               offset_per_track=self.check_offset_per_track.isChecked(),
                               offset_order=ast.literal_eval(self.edit_offset_order.text()),
-                              qi=self.check_qi.isChecked(),
+                              qi_config=qi_config,
                               hf_config=hf_config)
         for file, run in zip(files, runs):
             config = TiTs.select_from_db(self.dbpath, 'config', 'FitPars', [['file', 'run'], [file, run]],
@@ -323,6 +327,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
                     config['lineshape'] = 'Voigt'
                 if config['convolve'] not in CONVOLVE:
                     config['convolve'] = 'None'
+                config['qi_config'] = {**qi_config, **config['qi_config']}
                 config['hf_config'] = {**hf_config, **config['hf_config']}
             configs.append(config)
         if configs:
@@ -347,6 +352,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         kwargs = dict(x_axis=self.c_xaxis.currentText(),
                       routine=self.c_routine.currentText(),
                       absolute_sigma=not self.check_chi2.isChecked(),
+                      unc_from_fit=self.check_delta_f.isChecked(),
                       guess_offset=self.check_guess_offset.isChecked(),
                       cov_mc=self.check_cov_mc.isChecked(),
                       samples_mc=self.s_samples_mc.value(),
@@ -370,7 +376,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         if self.check_arithmetics.isChecked():
             self.update_arithmetics()
         else:
-            self.set_arithmetics(suppress_plot=True)
+            self.set_arithmetics_toggle_delta_f(suppress_plot=True)
         self.update_pars(suppress_plot=suppress_plot)
         self.edit_offset_order.setText(str(self.spectra_fit.configs[self.index_config]['offset_order']))
 
@@ -440,7 +446,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
     def _parse_fix(self, i, j):
         try:
             return ast.literal_eval(self.tab_pars.item(i, j).text())
-        except SyntaxError:
+        except (SyntaxError, ValueError):
             return self.tab_pars.item(i, j).text()
 
     def copy_pars(self):
@@ -450,7 +456,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
             tab_dict = {self.tab_pars.item(_i, 0).text(): [self._parse_fix(_i, _j) for _j in range(1, 4)]
                         for _i in range(self.tab_pars.rowCount())}
             pars = [tab_dict.get(name, [val, fix, link]) for name, val, fix, link in model.get_pars()]
-            model.set_pars(pars, force=True)
+            model.set_pars(pars)
 
     def reset_pars(self):
         self.spectra_fit.reset()
@@ -467,16 +473,24 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
             self._set_par(item.row(), item.column())
         for model in self.spectra_fit.fitter.models:
             model.update()
-        self.update_vals()
+        self.update_vals(suppress_plot=suppress_plot)
         self.tab_pars.blockSignals(False)
-        self.plot_auto(suppress_plot)
 
     def _set_par(self, i, j):  # Call only if table signals are blocked.
         set_x = [self.spectra_fit.set_val, self.spectra_fit.set_fix, self.spectra_fit.set_link][j - 1]
         update_x = [self.update_vals, self.update_fixes, self.update_links][j - 1]
 
         try:
-            val = ast.literal_eval(self.tab_pars.item(i, j).text())
+            text = self.tab_pars.item(i, j).text()
+            for _inf in inf_str:
+                text = text.replace('-{}'.format(_inf), '[]')
+                text = text.replace(_inf, '{}')
+            val = ast.literal_eval(text)
+            if isinstance(val, list):
+                val = [-inf if isinstance(v, list) else inf if isinstance(v, dict) else v for v in val] if val else -inf
+            if isinstance(val, dict):
+                val = inf
+
         except (ValueError, TypeError, SyntaxError):
             val = self.tab_pars.item(i, j).text()
         for index in range(len(self.spectra_fit.files)):
@@ -485,7 +499,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
                 set_x(index, _i, val)
             except ValueError:
                 continue
-        update_x()
+        update_x(suppress_plot=True)
 
     """ Model """
 
@@ -495,7 +509,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.s_npeaks.setValue(config['npeaks'])
         self.check_offset_per_track.setChecked(config['offset_per_track'])
         self.edit_offset_order.setText(str(config['offset_order']))
-        self.check_qi.setChecked(config['qi'])
+        self.check_qi.setChecked(config['qi_config']['qi'])
         self.check_hf_mixing.setChecked(config['hf_config']['enabled_l'] or config['hf_config']['enabled_u'])
 
     def set_lineshape(self):
@@ -540,7 +554,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
 
     def toogle_qi(self):
         for config in self.spectra_fit.configs:
-            config['qi'] = self.check_qi.isChecked()
+            config['qi_config']['qi'] = self.check_qi.isChecked()
 
     def toogle_hf_mixing(self):
         # for config in self.spectra_fit.configs:
@@ -573,13 +587,10 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
     def toggle_chi2(self):
         self.spectra_fit.absolute_sigma = not self.check_chi2.isChecked()
 
+    def toggle_delta_f(self):
+        self.spectra_fit.unc_from_fit = self.check_delta_f.isChecked()
+
     def set_x_axis(self, suppress_plot=False):
-        # TODO: Implement DAC voltages as x-axis, replace plot option.
-        if self.c_xaxis.currentText() == 'DAC volt (TODO)':
-            self.c_xaxis.blockSignals(True)
-            self.c_xaxis.setCurrentText(self.spectra_fit.x_axis)
-            self.c_xaxis.blockSignals(False)
-            return
         self.spectra_fit = self.gen_spectra_fit()
         self.plot_auto(suppress_plot)
 
@@ -660,6 +671,14 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
             self.plot_auto(suppress_plot)
         except (ValueError, TypeError, SyntaxError, NameError):
             self._set_arithmetics(self.spectra_fit.arithmetics)
+
+    def set_arithmetics_toggle_delta_f(self, suppress_plot=False):
+        self.set_arithmetics(suppress_plot=suppress_plot)
+        if self.spectra_fit.arithmetics[0] == '[':
+            self.check_delta_f.setEnabled(True)
+        else:
+            self.check_delta_f.setChecked(False)
+            self.check_delta_f.setEnabled(False)
 
     def update_arithmetics(self):
         self.edit_arithmetics.blockSignals(True)
@@ -835,7 +854,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.update_vals()
         self.tab_pars.blockSignals(False)
         self.mark_warn(info['warn'])
-        self.mark_errs(info['errs'])
+        self.mark_errs(info['err'])
 
     def fit_threaded(self):
         self.mark_loaded(self.get_selected_items())
@@ -861,7 +880,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.update_vals(suppress_plot=True)
         self.tab_pars.blockSignals(False)
         self.mark_warn(info['warn'])
-        self.mark_errs(info['errs'])
+        self.mark_errs(info['err'])
         if self.check_save_figure.isChecked():
             for i, path in enumerate(self.spectra_fit.file_paths):
                 self.spectra_fit.plot(index=i, clear=True, show=False, plot_path=os.path.split(path)[0])

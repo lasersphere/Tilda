@@ -8,13 +8,13 @@ import os
 import ast
 import sqlite3
 import numpy as np
+import qspec.models as mod
 
 import Tilda.PolliFit.TildaTools as TiTs
 from Tilda.PolliFit import MPLPlotter as Plot
 from Tilda.PolliFit.DBIsotope import DBIsotope
 import Tilda.PolliFit.Measurement.MeasLoad as MeasLoad
 from Tilda.PolliFit.Fitter import Fitter, print_colored
-import Tilda.PolliFit.Models.Collection as Mod
 
 
 LEGACY_PARS = {'lor': 'Gamma', 'gamma': 'Gamma', 'gau': 'sigma'}
@@ -40,11 +40,57 @@ def _get_iso_par_from_dict(par_dict, par):
         return par_dict[par[:par.find('(')]]
 
 
+def gen_splitter_model(config, iso):
+    if config['qi_config']['qi'] and (config['hf_config']['enabled_l'] or config['hf_config']['enabled_u']):
+        pass
+    elif config['qi_config']['qi'] and iso.I > 0:
+        return mod.HyperfineQI, (iso.I, iso.Jl, iso.Ju, iso.name, config['qi_config']['qi_path'])
+    elif config['hf_config']['enabled_l'] or config['hf_config']['enabled_u']:
+        return mod.HyperfineMixed, (iso.I, iso.Jl, iso.Ju, iso.name, config['hf_config'])
+    else:
+        return mod.Hyperfine, (iso.I, iso.Jl, iso.Ju, iso.name)
+    raise ValueError('Specified splitter model not available.')
+
+
+def gen_splitter_models(config, iso):
+    _splitter, _args = gen_splitter_model(config, iso)
+    splitter = [_splitter, ]
+    args = [_args, ]
+    _iso = iso.m
+    while _iso is not None:
+        _splitter, _args = gen_splitter_model(config, _iso)
+        splitter.append(_splitter)
+        args.append(_args)
+        _iso = _iso.m
+    return splitter, args
+
+
+def gen_model(config, iso, spectra_fit=None):
+    splitter, args = gen_splitter_models(config, iso)
+    shape = eval('mod.{}'.format(config['lineshape']))
+    splitter_model = mod.SplitterSummed([
+        _splitter(shape(), *_args) for _splitter, _args in zip(splitter, args)])
+    if spectra_fit is not None:
+        spectra_fit.splitter_models.append(splitter_model)
+    npeaks_model = mod.NPeak(model=splitter_model, n_peaks=config['npeaks'])
+    if config['convolve'] != 'None':
+        npeaks_model = eval('mod.{}Convolved'.format(config['convolve']))(model=npeaks_model)
+    offset = config['offset_order']
+    x_cuts = None
+    if config['offset_per_track']:
+        x_cuts = [float(i) for i in range(len(offset) - 1)]  # The correct x_cuts are not known at this point.
+        # The actual x_cuts are set after the fitter is created.
+    else:
+        offset = [offset[0], ]
+    offset_model = mod.Offset(model=npeaks_model, x_cuts=x_cuts, offsets=offset)
+    return offset_model
+
+
 class SpectraFit:
     def __init__(self, db, files, runs, configs, index_config,
-                 x_axis='ion frequencies', routine='curve_fit', absolute_sigma=False, guess_offset=True,
-                 cov_mc=False, samples_mc=100, arithmetics=None, save_to_disk=False, norm_scans=False,
-                 summed=False, linked=False, col_acol_config=None, save_to_db=False, x_as_freq=True,
+                 x_axis='ion frequencies', routine='curve_fit', absolute_sigma=False, unc_from_fit=False,
+                 guess_offset=True, cov_mc=False, samples_mc=100, arithmetics=None, save_to_disk=False,
+                 norm_scans=False, summed=False, linked=False, col_acol_config=None, save_to_db=False, x_as_freq=True,
                  fig_save_format='.png', zoom_data=False, fmt='.k', fontsize=10):
         self.db = db
         self.files = files
@@ -56,6 +102,7 @@ class SpectraFit:
 
         self.x_axis = x_axis
         self.routine = routine
+        self.unc_from_fit = unc_from_fit
         self.absolute_sigma = absolute_sigma
         self.cov_mc = cov_mc
         self.samples_mc = samples_mc
@@ -105,28 +152,14 @@ class SpectraFit:
         return file_paths
 
     def gen_model(self, config, iso):
-        splitter, args = Mod.gen_splitter_models(config, iso)
-        splitter_model = Mod.SplitterSummed([
-            splitter(eval('Mod.{}()'.format(config['lineshape'])), *_args) for _args in args])
-        self.splitter_models.append(splitter_model)
-        npeaks_model = Mod.NPeak(model=splitter_model, n_peaks=config['npeaks'])
-        if config['convolve'] != 'None':
-            npeaks_model = eval('Mod.{}Convolved'.format(config['convolve']))(model=npeaks_model)
-        offset = config['offset_order']
-        x_cuts = None
-        if config['offset_per_track']:
-            x_cuts = [float(i) for i in range(len(offset) - 1)]  # The correct x_cuts are not known at this point.
-            # The actual x_cuts are set after the fitter is created.
-        else:
-            offset = [offset[0], ]
-        offset_model = Mod.Offset(model=npeaks_model, x_cuts=x_cuts, offsets=offset)
-        return offset_model
+        return gen_model(config, iso, self)
 
     def gen_config(self):
         return dict(x_axis=self.x_axis, routine=self.routine, absolute_sigma=self.absolute_sigma,
-                    guess_offset=self.guess_offset, cov_mc=self.cov_mc, samples_mc=self.samples_mc,
-                    arithmetics=self.arithmetics, save_to_disk=self.save_to_disk, norm_scans=self.norm_scans,
-                    summed=self.summed, linked=self.linked, col_acol_config=self.col_acol_config)
+                    unc_from_fit=self.unc_from_fit, guess_offset=self.guess_offset, cov_mc=self.cov_mc,
+                    samples_mc=self.samples_mc, arithmetics=self.arithmetics, save_to_disk=self.save_to_disk,
+                    norm_scans=self.norm_scans, summed=self.summed, linked=self.linked,
+                    col_acol_config=self.col_acol_config)
 
     def gen_fitter(self):
         if not self.files:
@@ -168,7 +201,7 @@ class SpectraFit:
             if isinstance(meas[-1], MeasLoad.XMLImporter):
                 if meas[-1].seq_type == 'kepco':
                     iso.append(None)
-                    models.append(Mod.Amplifier(order=config['offset_order'][0]))
+                    models.append(mod.Amplifier(order=config['offset_order'][0]))
                 else:
                     iso.append(DBIsotope(self.db, meas[-1].type, lineVar=linevar))
                     models.append(self.gen_model(config, iso[-1]))
@@ -239,14 +272,14 @@ class SpectraFit:
     def get_pars(self, i):
         return self.fitter.get_pars(i)
 
-    def set_val(self, i, j, val):
-        self.fitter.set_val(i, j, val)
+    def set_val(self, i, j, val, force=False):
+        self.fitter.set_val(i, j, val, force=force)
 
-    def set_fix(self, i, j, fix):
-        self.fitter.set_fix(i, j, fix)
+    def set_fix(self, i, j, fix, force=False):
+        self.fitter.set_fix(i, j, fix, force=force)
 
-    def set_link(self, i, j, link):
-        self.fitter.set_link(i, j, link)
+    def set_link(self, i, j, link, force=False):
+        self.fitter.set_link(i, j, link, force=force)
 
     def reset(self):
         if self.reset_model is None:
@@ -347,7 +380,9 @@ class SpectraFit:
             #     pars = TiTs.select_from_db(self.db, 'pars', 'FitPars', [['file'], [file]], caller_name=__name__)
             if load_from_isotopes:
                 return self._pars_from_legacy_db(file, run)
-        pars = ast.literal_eval(pars[index][-1])
+        p = pars[index][-1].replace('(np.nan,', '(0.0,').replace('(nan,', '(0.0,') \
+            .replace('(np.inf,', '(0.0,').replace('(inf,', '(0.0,')
+        pars = ast.literal_eval(p)
         return pars
 
     def load_pars(self):
@@ -359,11 +394,11 @@ class SpectraFit:
             for j, (name, val, fix, link) in enumerate(self.get_pars(i)):
                 par = pars.get(name, (val, fix, link))
                 self.set_val(i, j, par[0])
-                try:
-                    self.set_fix(i, j, par[1])
-                except ZeroDivisionError:
-                    reload_fix.append((j, par[1]))
+                if isinstance(par[1], str):
                     self.set_fix(i, j, True)
+                    reload_fix.append((j, par[1]))
+                else:
+                    self.set_fix(i, j, par[1])
                 self.set_link(i, j, par[2])
             for j, fix in reload_fix:
                 self.set_fix(i, j, fix)
@@ -377,12 +412,17 @@ class SpectraFit:
         for i, (file, run, config) in enumerate(zip(self.files, self.runs, self.configs)):
             new_pars = {name: (val, fix, link) for (name, val, fix, link) in self.get_pars(i)}
             pars = TiTs.select_from_db(self.db, 'pars', 'FitPars', [['file', 'run'], [file, run]], caller_name=__name__)
-            pars = {} if pars is None else ast.literal_eval(pars[0][0])
+            if pars is None:
+                pars = {}
+            else:
+                pars = ast.literal_eval(pars[0][0].replace('(np.nan,', '(0.0,').replace('(nan,', '(0.0,')
+                                        .replace('(np.inf,', '(0.0,').replace('(inf,', '(0.0,'))
             new_pars = {**pars, **new_pars}
             softw_gates = str(self.fitter.meas[i].softw_gates)
             if 'inf' in softw_gates:
                 self.set_softw_gates(i, self.fitter.meas[i].softw_gates)
                 softw_gates = str(self.fitter.meas[i].softw_gates)
+            config['qi_config'].pop('qi_path', None)
             execute(cur, 'INSERT OR REPLACE INTO FitPars (file, run, softw_gates, config, pars)'
                          ' VALUES (?, ?, ?, ?, ?)', (file, run, softw_gates, str(config), str(new_pars)))
         con.commit()
@@ -392,7 +432,7 @@ class SpectraFit:
         con = sqlite3.connect(self.db)
         cur = con.cursor()
         for i, (file, run) in enumerate(zip(self.files, self.runs)):
-            if i in info['errs']:
+            if i in info['err']:
                 continue
             pars = {self.fitter.models[i].names[j]: (pt, np.sqrt(pc[j]), self.fitter.models[i].fixes[j])
                     for j, (pt, pc) in enumerate(zip(popt[i], pcov[i]))}

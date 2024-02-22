@@ -15,7 +15,7 @@ from Tilda.PolliFit.Measurement.BeaImporter import BeaImporter
 from Tilda.PolliFit.Measurement.SimpleImporter import SimpleImporter
 
 
-def load(file, db, raw=False, x_as_voltage=True, softw_gates=None):
+def load(file, db, raw=False, x_as_voltage=True, softw_gates=None, meta_data_channels=None):
     e = os.path.splitext(file)[1]
     if e == '.txt':
         f = KepcoImporterTLD(file)
@@ -42,7 +42,7 @@ def load(file, db, raw=False, x_as_voltage=True, softw_gates=None):
         return f
 
     elif e == '.xml':
-        f = XMLImporter(file, x_as_voltage, softw_gates=softw_gates)
+        f = XMLImporter(file, x_as_voltage, softw_gates=softw_gates, meta_data_channels=meta_data_channels)
         if not raw:
             f.pre_process(db)
         return f

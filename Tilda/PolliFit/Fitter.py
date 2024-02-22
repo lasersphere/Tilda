@@ -10,32 +10,17 @@ import sqlite3
 from scipy.stats import norm
 import itertools as it
 from PyQt5.QtCore import QObject, pyqtSignal
+from qspec.models import Linked, fit
 
 # noinspection PyUnresolvedReferences
 from Tilda.PolliFit.FitRoutines import curve_fit, const
 from Tilda.PolliFit import Physics as Ph
-from Tilda.PolliFit.Tools import print_colored, print_cov
-from Tilda.PolliFit.Models.Collection import Linked
+from Tilda.PolliFit.Tools import print_colored
 
 
 COL_ACOL_CONFIG = {'enabled': False, 'rule': 'acca / caac', 'parameter': 'center',
                    'iterate': 3, 'volt': 1., 'mhz': 1., 'save_voltage': True, 'mc': False, 'mc_size': 100000,
                    'show_results': False, 'save_results': True, 'file': 'ColAcol_{db}_{run}.txt'}
-
-
-class Xlist:  # Custom list to trick 'curve_fit' for linked fitting of files with different x-axis sizes.
-    def __init__(self, x):
-        self.x = x
-
-    def __iter__(self):
-        for _x in self.x:
-            yield _x
-
-    def __getitem__(self, key):
-        return self.x[key]
-
-    def __setitem__(self, key, value):
-        self.x[key] = value
 
 
 class Fitter(QObject):
@@ -58,7 +43,7 @@ class Fitter(QObject):
         self.iso = iso
         self.config = config
         if self.config is None:
-            self.config = dict(routine='curve_fit', absolute_sigma=False, guess_offset=True,
+            self.config = dict(routine='curve_fit', absolute_sigma=False, unc_from_fit=False, guess_offset=True,
                                cov_mc=False, samples_mc=100, arithmetics='', save_to_disk=False, norm_scans=False,
                                summed=False, linked=False, col_acol_config=COL_ACOL_CONFIG)
         self.run = '' if run is None else run
@@ -69,26 +54,39 @@ class Fitter(QObject):
         self.routines = {'curve_fit', }
 
         self.sizes = []
-        self.x_volt, self.x, self.y, self.yerr = [], [], [], []
+        self.x_raw, self.x, self.y, self.yerr = [], [], [], []
+        self.y_norm = []
         self.popt, self.pcov, self.info = [], [], {}
         self.gen_data()
 
     def get_pars(self, i):
         return self.models[i].get_pars()
 
-    def set_val(self, i, j, val):
-        self.models[i].set_val(j, val)
+    def set_val(self, i, j, val, force=False):
+        self.models[i].set_val(j, val, force=force)
 
-    def set_fix(self, i, j, fix):
-        self.models[i].set_fix(j, fix)
+    def set_fix(self, i, j, fix, force=False):
+        self.models[i].set_fix(j, fix, force=force)
 
-    def set_link(self, i, j, link):
-        self.models[i].set_link(j, link)
+    def set_link(self, i, j, link, force=False):
+        self.models[i].set_link(j, link, force=force)
 
     def get_meas_x_in_freq(self, i):
         meas, iso = self.meas[i], self.iso[i]
-        return [[Ph.volt_to_rel_freq(x, iso.q, iso.mass, meas.laserFreq, iso.freq, meas.col)
+        return [[Ph.volt_to_rel_freq(x, iso.q if iso.q else 1, iso.mass, meas.laserFreq, iso.freq, meas.col)
                  for x in x_track] for x_track in meas.x]
+
+    def gen_y_sigma(self, linked, i):
+        if self.config['unc_from_fit'] and self.y_norm:
+            y_norm = np.concatenate(self.y_norm, axis=0) if linked else self.y_norm[i]
+
+            def y_sigma(x, y, y_fit, *params):
+                return np.sqrt(y_fit * y_norm)
+
+            return y_sigma
+        if linked:
+            return self.yerr
+        return self.yerr[i]
 
     @staticmethod
     def _yerr_from_array(a):
@@ -107,6 +105,9 @@ class Fitter(QObject):
         :returns: None.
         """
         cts = [np.array(t, dtype=float) for t in meas.cts]
+        track_slice = slice(None, None, 1)
+        if isinstance(st[1], int) and st[1] > -1:
+            track_slice = slice(st[1], st[1] + 1, 1)
 
         if not self.config['arithmetics']:
             self.config['arithmetics'] = '[{}]'.format(', '.join(st[0]))
@@ -114,18 +115,21 @@ class Fitter(QObject):
             indexes = np.array(eval(self.config['arithmetics']), dtype=int)
             cts_sum = [np.sum(t[indexes, :], axis=0) for t in cts]
             cts_d = [self._yerr_from_array(t) for t in cts_sum]
+            cts_norm = [np.ones_like(t, dtype=float) for t in cts_sum]
             if self.config['norm_scans']:
+                cts_norm = [np.full_like(t, 1 / n, dtype=float) for t, n in zip(cts_sum, meas.nrScans)]
                 cts_sum = [t / n for t, n in zip(cts_sum, meas.nrScans)]
                 cts_d = [t / n for t, n in zip(cts_d, meas.nrScans)]
-            self.y.append(np.concatenate(cts_sum, axis=0))
-            self.yerr.append(np.concatenate(cts_d, axis=0))
+            self.y.append(np.concatenate(cts_sum[track_slice], axis=0))
+            self.yerr.append(np.concatenate(cts_d[track_slice], axis=0))
+            self.y_norm.append(np.concatenate(cts_norm[track_slice], axis=0))
         else:
             cts_d = [self._yerr_from_array(t) for t in cts]
             if self.config['norm_scans']:
                 cts = [t / n for t, n in zip(cts, meas.nrScans)]
                 cts_d = [t / n for t, n in zip(cts_d, meas.nrScans)]
-            cts = np.concatenate(cts, axis=1)
-            cts_d = np.concatenate(cts_d, axis=1)
+            cts = np.concatenate(cts[track_slice], axis=1)
+            cts_d = np.concatenate(cts_d[track_slice], axis=1)
             y_mean = {'s{}'.format(i): cts[i] for i in range(self.n_scaler)
                       if 's{}'.format(i) in self.config['arithmetics']}
             y_samples = {'s{}'.format(i): norm.rvs(loc=cts[i], scale=cts_d[i], size=(n, cts[i].size))
@@ -193,11 +197,11 @@ class Fitter(QObject):
         :returns: x_volt, x, y, yerr. The combined sorted data of the given measurements and fitting options.
         """
         self.sizes = []
-        self.x_volt, self.x, self.y, self.yerr = [], [], [], []
+        self.x_raw, self.x, self.y, self.yerr, self.y_norm = [], [], [], [], []
         for meas, st, iso in zip(self.meas, self.st, self.iso):
             data = meas.getArithSpec(*st, function=self.config['arithmetics'], eval_on=True)
             self.sizes.append(data[0].size)
-            self.x_volt.append(data[0])
+            self.x_raw.append(data[0])
             if meas.seq_type == 'kepco':
                 self.x.append(data[0])
                 self.y.append(data[1])
@@ -211,10 +215,12 @@ class Fitter(QObject):
                     laser_freq = meas.laserFreq
 
                 if self.config['x_axis'] in ['ion frequencies', 'lab frequencies']:
-                    self.x.append(Ph.volt_to_rel_freq(volt, iso.q, iso.mass, laser_freq, iso.freq, meas.col,
-                                                      lab_frame=self.config['x_axis'] == 'lab frequencies'))
-                else:  # TODO: Implement DAC voltages.
-                    pass
+                    self.x.append(Ph.volt_to_rel_freq(volt, iso.q if iso.q else 1, iso.mass, laser_freq, iso.freq,
+                                                      meas.col, lab_frame=self.config['x_axis'] == 'lab frequencies'))
+                elif self.config['x_axis'] == 'DAC voltages':
+                    self.x.append(np.array([i for i in it.chain(*meas.x_dac_volt)]))
+                else:
+                    self.x.append(data[0])
                 self._gen_yerr(meas, st)
                 # self._gen_yerr(meas, st, data)
         if all(model.type == 'Offset' for model in self.models):
@@ -239,7 +245,8 @@ class Fitter(QObject):
                 print_colored('WARNING', 'Tracks are overlapping in file {}.'
                                          ' Cannot use \'offset per track\' option'.format(meas.file))
                 continue
-            x_cuts = [Ph.volt_to_rel_freq(_x, iso.q, iso.mass, meas.laserFreq, iso.freq, meas.col) for _x in x_cuts]
+            x_cuts = [Ph.volt_to_rel_freq(_x, iso.q if iso.q else 1, iso.mass, meas.laserFreq, iso.freq, meas.col)
+                      for _x in x_cuts]
             model.set_x_cuts(x_cuts)
 
     def get_routine(self):
@@ -253,7 +260,11 @@ class Fitter(QObject):
         if i is None:
             return [self.reduced_chi2(i) for i in range(self.size)]
         else:
-            return np.sum(self.residuals(i) ** 2 / self.yerr[i] ** 2) / self.n_dof(i)
+            y_err = self.yerr[i]
+            sigma_y = self.gen_y_sigma(False, i)
+            if callable(sigma_y):
+                y_err = sigma_y(self.x[i], self.y[i], self.models[i](self.x[i], *self.popt))
+            return np.sum(self.residuals(i) ** 2 / y_err ** 2) / self.n_dof(i)
 
     def n_dof(self, i=None):
         """ Calculate number of degrees of freedom """
@@ -262,7 +273,7 @@ class Fitter(QObject):
         else:
             # if bounds are given instead of boolean, write False to fixed bool list.
             fixed_sum = sum(f if isinstance(f, bool) else False for f in self.models[i].fixes)
-            return self.x_volt[i].size - (self.models[i].size - fixed_sum)
+            return self.x_raw[i].size - (self.models[i].size - fixed_sum)
 
     def residuals(self, i=None):
         """ Calculate the residuals of the current parameter set """
@@ -274,142 +285,53 @@ class Fitter(QObject):
             return self.y[i] - y_model
 
     def fit_batch(self):
-        """
-        Fit all SpecData objects sequentially.
-
-        :returns: popt, pcov, info.
-        """
-        routine = self.get_routine()
-        warn = []
-        errs = []
-        chi2 = []
+        info = dict(warn=[], err=[], chi2=[])
         popt, pcov = [], []
         for i, (meas, model, x, y, yerr) in enumerate(zip(self.meas, self.models, self.x, self.y, self.yerr)):
-            try:
-                if model.error:
-                    raise ValueError(model.error)
-                if model.type == 'Offset':
-                    model.update_on_call = False
-                    model.gen_offset_masks(x)
-                    if self.config['guess_offset']:
-                        model.guess_offset(x, y)
-                fixed, bounds = model.fit_prepare()
-                if self.config['cov_mc']:
-                    y_samples = np.random.normal(y, yerr, size=(self.config['samples_mc'], y.size))
-                    ps = np.array([routine(model, x, y_sample, p0=model.vals, p0_fixed=fixed, sigma=yerr,
-                                           absolute_sigma=self.config['absolute_sigma'], bounds=bounds, report=False,
-                                           maxfev=10000)[0] for y_sample in y_samples], dtype=float)
-                    pt = np.mean(ps, axis=0)
-                    pc = np.zeros((pt.size, pt.size))
-                    indices = np.array([i for i, fix in enumerate(model.fixes) if not fix])
-                    mask = (indices[:, None], indices)
-                    pc[mask] = np.cov(ps[:, indices], rowvar=False)
-                    pt = np.array(model.update_args(pt))
-                else:
-                    pt, pc = routine(model, x, y, p0=model.vals, p0_fixed=fixed, sigma=yerr,
-                                     absolute_sigma=self.config['absolute_sigma'], bounds=bounds, report=False,
-                                     maxfev=10000)
-                    pt = np.array(model.update_args(pt))
-                model.set_vals(pt, force=True)
-                chi2.append(self.reduced_chi2(i))  # Calculate chi2 after the vals are set.
-
-                print_colored('HEADER', '\nFit of file \'{}\':'.format(os.path.splitext(meas.file)[0]))
-                digits = int(np.floor(np.log10(np.abs(model.size)))) + 1
-                print('Optimized parameters:')
-                for j, (name, val, err) in enumerate(zip(model.names, pt, np.sqrt(np.diag(pc)))):
-                    print('{}:   {} = {} +/- {}'.format(str(j).zfill(digits), name, val, err))
-                print('\nCov. Matrix:')
-                print_cov(pc, normalize=True, decimals=2)
-                print('\nRed. chi2 = {}'.format(np.around(chi2[-1], decimals=2)))
-
-                popt.append(pt)
-                pcov.append(pc)
-                if np.any(np.isinf(pc)):
-                    warn.append(i)
-                    print_colored('WARNING', 'Failed to estimate uncertainties for file number {}.'.format(i + 1))
-                else:
-                    print_colored('OKGREEN', 'Successfully fitted file number {}.'.format(i + 1))
-            except (ValueError, RuntimeError) as e:
-                print_colored('FAIL', 'Error while fitting file number {}: {}.'.format(i + 1, e))
-                warn.append(i)
-                errs.append(i)
-                chi2.append(0.)
-                popt.append(np.array(model.vals))
-                pcov.append(np.zeros((popt[-1].size, popt[-1].size)))
-            if model.type == 'Offset':
-                model.update_on_call = True  # Reset the offset model to be updated on call.
+            sigma_y = self.gen_y_sigma(False, i)
+            _popt, _pcov, _info = fit(
+                model, x, y, sigma_y=sigma_y, report=True, routine=self.config['routine'],
+                absolute_sigma=self.config['absolute_sigma'], guess_offset=self.config['guess_offset'],
+                mc_sigma=self.config['samples_mc'] if self.config['cov_mc'] else 0)
+            popt.append(_popt)
+            pcov.append(_pcov)
+            for k in ['warn', 'err']:
+                if _info[k]:
+                    info[k].append(i)
+            info['chi2'].append(_info['chi2'])
         color = 'OKGREEN'
-        if len(warn) > 0:
+        if len(info['warn']) > 0:
             color = 'WARNING'
-        if len(errs) > 0:
+        if len(info['err']) > 0:
             color = 'FAIL'
-        print_colored(color, '\nFits completed, success in {} / {}.'.format(self.size - len(warn), self.size))
-        info = dict(warn=warn, errs=errs, chi2=chi2)
+        print_colored(color, '\nFits completed, success in {} / {}.'.format(self.size - len(info['warn']), self.size))
         return popt, pcov, info
 
     def fit_summed(self):
         return None, None, {}
 
     def fit_linked(self):
-        """
-        Fit all SpecData objects simultaneously.
-
-        :returns: popt, pcov, info.
-        """
-        routine = self.get_routine()
+        info = dict(warn=[], err=[], chi2=[])
         model = Linked(self.models)
-        warn = []
-        errs = []
-        y, yerr = np.concatenate(self.y, axis=0), np.concatenate(self.yerr, axis=0)
-        try:
-            if model.error:
-                raise ValueError(model.error)
-            for _model, _x, _y in zip(self.models, self.x, self.y):
-                # Handle offsets for all linked models.
-                if _model.type == 'Offset':
-                    _model.update_on_call = False
-                    _model.gen_offset_masks(_x)
-                    if self.config['guess_offset']:
-                        _model.guess_offset(_x, _y)
-            model.inherit_vals()  # Inherit values of the linked models afterwards.
-            fixed, bounds = model.fit_prepare()
-            # curve_fit wants to convert lists and tuples to arrays -> Use custom list type.
-            pt, pc = routine(model, Xlist(self.x), y, p0=model.vals, p0_fixed=fixed, sigma=yerr,
-                             absolute_sigma=self.config['absolute_sigma'], bounds=bounds, report=False)
-            pt = np.array(model.update_args(pt))
-            model.set_vals(pt, force=True)  # Set the vals of the model (auto sets the vals of the linked models).
-            chi2 = self.reduced_chi2()  # Calculate chi2 after the vals are set.
+        sigma_y = self.gen_y_sigma(True, None)
+        _popt, _pcov, _info = fit(
+            model, self.x, self.y, sigma_y=sigma_y, report=True, routine=self.config['routine'],
+            absolute_sigma=self.config['absolute_sigma'], guess_offset=self.config['guess_offset'],
+            mc_sigma=self.config['samples_mc'] if self.config['cov_mc'] else 0)
 
-            print_colored('HEADER', '\nLinked fit of files {}'
-                          .format([os.path.splitext(meas.file)[0] for meas in self.meas]))
-            digits = int(np.floor(np.log10(np.abs(model.size)))) + 1
-            for i, (name, val, err) in enumerate(zip(model.names, pt, np.sqrt(np.diag(pc)))):
-                print('{}:   {} = {} +/- {}'.format(str(i).zfill(digits), name, val, err))
-            print('\nCov. Matrix:')
-            print_cov(pc, normalize=True, decimals=2)
-            print('\nRed. chi2:')
-            for i, _chi2 in enumerate(chi2):
-                print('{}:   {}'.format(str(i).zfill(int(np.log10(self.size))), np.around(_chi2, decimals=2)))
+        popt = [_popt[_slice] for _slice in model.slices]
+        pcov = [_pcov[_slice, _slice] for _slice in model.slices]
+        for k in ['warn', 'err']:
+            if _info[k]:
+                info[k] = list(range(self.size))
+        info['chi2'] = [self.reduced_chi2(i) for i in range(self.size)]  # _info['chi2']
 
-            popt = [pt[_slice] for _slice in model.slices]
-            pcov = [pc[_slice, _slice] for _slice in model.slices]
-        except (ValueError, RuntimeError) as e:
-            print_colored('FAIL', 'Error while fitting linked files: {}.'.format(e))
-            warn = list(range(self.size))  # Issue warnings for all files.
-            errs = list(range(self.size))
-            chi2 = [0., ] * self.size
-            popt = [np.array(model.vals) for model in self.models]
-            pcov = [np.zeros((popt[-1].size, popt[-1].size)) for _ in self.models]
-        for _model in self.models:
-            if _model.type == 'Offset':
-                _model.update_on_call = True  # Reset all offset models to be updated on call.
-        if len(warn) == len(errs) == 0:
-            print_colored('OKGREEN', '\nLinked fit completed, success.')
-        elif len(errs) > 0:
-            print_colored('FAIL', '\nLinked fit completed, failed.')
-        elif len(warn) > 0:
-            print_colored('WARNING', '\nLinked fit completed, warning.')
-        info = dict(warn=warn, errs=errs, chi2=chi2)
+        color = 'OKGREEN'
+        if len(info['warn']) > 0:
+            color = 'WARNING'
+        if len(info['err']) > 0:
+            color = 'FAIL'
+        print_colored(color, '\nLinked fit completed, success in {} / {}.'.format(self.size - len(info['warn']), self.size))
         return popt, pcov, info
 
     def save_linked_fit(self):
@@ -622,7 +544,7 @@ class Fitter(QObject):
             chi2 = [0., ] * self.size
             popt = [np.array(model.vals) for model in self.models]
             pcov = [np.zeros((popt[-1].size, popt[-1].size)) for _ in self.models]
-            self.popt, self.pcov, self.info = popt, pcov, dict(warn=warn, errs=errs, chi2=chi2)
+            self.popt, self.pcov, self.info = popt, pcov, dict(warn=warn, err=errs, chi2=chi2)
             return
 
         iterate = self.config['col_acol_config']['iterate']
@@ -636,7 +558,7 @@ class Fitter(QObject):
         self._fit()
         results = self._calc_col_acol(col, acol)
         i = 0
-        while (abs(max(r['df'] for r in results)) > mhz) and i < iterate:
+        while (max(abs(r['df']) for r in results) > mhz) and i < iterate:
             self._optimize_acc_volt(results, col, acol)
             self._fit()
             results = self._calc_col_acol(col, acol)
@@ -657,13 +579,13 @@ class Fitter(QObject):
                       'Error msg: {}'.format(e))
                 return
         files = [os.path.splitext(meas.file)[0] for meas in self.meas]
-        for file, model, _popt, _pcov, chi2 in zip(files, self.models, self.popt, self.pcov, self.info['chi2']):
+        for j, (file, model, _popt, _pcov, chi2) in enumerate(zip(files, self.models, self.popt, self.pcov, self.info['chi2'])):
             with open(os.path.join(path, '{}_{}_{}_fit.txt'.format(db, file, self.run)), 'w') as f:
                 f.write('# File: \'{}\'\n'.format(file))
                 f.write('# Run: \'{}\'\n'.format(self.run))
                 model_description = model.description
                 if self.config['linked']:
-                    model_description = 'Linked[0].{}'.format(model_description)
+                    model_description = 'Linked[{}].{}'.format(j, model_description)
                 f.write('# Model: {}\n'.format(model_description))
                 f.write('# Red. chi2: {}\n# \n'.format(np.around(chi2, decimals=2)))
                 f.write('# Index, Parameter, Value, Uncertainty, Fixed, Linked\n')
