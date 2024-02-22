@@ -473,9 +473,8 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
             self._set_par(item.row(), item.column())
         for model in self.spectra_fit.fitter.models:
             model.update()
-        self.update_vals()
+        self.update_vals(suppress_plot=suppress_plot)
         self.tab_pars.blockSignals(False)
-        self.plot_auto(suppress_plot)
 
     def _set_par(self, i, j):  # Call only if table signals are blocked.
         set_x = [self.spectra_fit.set_val, self.spectra_fit.set_fix, self.spectra_fit.set_link][j - 1]
@@ -500,7 +499,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
                 set_x(index, _i, val)
             except ValueError:
                 continue
-        update_x()
+        update_x(suppress_plot=True)
 
     """ Model """
 

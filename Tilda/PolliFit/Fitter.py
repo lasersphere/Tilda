@@ -73,7 +73,7 @@ class Fitter(QObject):
 
     def get_meas_x_in_freq(self, i):
         meas, iso = self.meas[i], self.iso[i]
-        return [[Ph.volt_to_rel_freq(x, iso.q, iso.mass, meas.laserFreq, iso.freq, meas.col)
+        return [[Ph.volt_to_rel_freq(x, iso.q if iso.q else 1, iso.mass, meas.laserFreq, iso.freq, meas.col)
                  for x in x_track] for x_track in meas.x]
 
     def gen_y_sigma(self, linked, i):
@@ -215,8 +215,8 @@ class Fitter(QObject):
                     laser_freq = meas.laserFreq
 
                 if self.config['x_axis'] in ['ion frequencies', 'lab frequencies']:
-                    self.x.append(Ph.volt_to_rel_freq(volt, iso.q, iso.mass, laser_freq, iso.freq, meas.col,
-                                                      lab_frame=self.config['x_axis'] == 'lab frequencies'))
+                    self.x.append(Ph.volt_to_rel_freq(volt, iso.q if iso.q else 1, iso.mass, laser_freq, iso.freq,
+                                                      meas.col, lab_frame=self.config['x_axis'] == 'lab frequencies'))
                 elif self.config['x_axis'] == 'DAC voltages':
                     self.x.append(np.array([i for i in it.chain(*meas.x_dac_volt)]))
                 else:
@@ -245,7 +245,8 @@ class Fitter(QObject):
                 print_colored('WARNING', 'Tracks are overlapping in file {}.'
                                          ' Cannot use \'offset per track\' option'.format(meas.file))
                 continue
-            x_cuts = [Ph.volt_to_rel_freq(_x, iso.q, iso.mass, meas.laserFreq, iso.freq, meas.col) for _x in x_cuts]
+            x_cuts = [Ph.volt_to_rel_freq(_x, iso.q if iso.q else 1, iso.mass, meas.laserFreq, iso.freq, meas.col)
+                      for _x in x_cuts]
             model.set_x_cuts(x_cuts)
 
     def get_routine(self):
