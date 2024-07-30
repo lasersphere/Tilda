@@ -21,6 +21,7 @@ from Tilda.PolliFit.Gui.HFMixingConfigUi import HFMixingConfigUi
 from Tilda.PolliFit.SpectraFit import SpectraFit
 from Tilda.PolliFit.Fitter import COL_ACOL_CONFIG
 from Tilda.PolliFit import TildaTools as TiTs
+from Tilda.PolliFit.Models.Spectrum import SPECTRA as SPECTRA_TILDA
 
 colors = ['b', 'g', 'r', 'x', 'm', 'y', 'k']
 inf_str = ['PINF', 'Infinity', 'infty', 'Inf', 'inf']
@@ -167,6 +168,10 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
     def load_lineshapes(self):
         for i, spec in enumerate(SPECTRA):
             self.c_lineshape.insertItem(i, spec)
+        for i, spec in enumerate(SPECTRA_TILDA):
+            if spec in SPECTRA:
+                continue
+            self.c_lineshape.insertItem(i + len(SPECTRA), spec)
         self.c_lineshape.setCurrentText('Voigt')
 
     def load_convolves(self):
@@ -323,7 +328,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
                 config = current_config
             else:
                 config = {**current_config, **ast.literal_eval(config[0][0])}
-                if config['lineshape'] not in SPECTRA:
+                if config['lineshape'] not in SPECTRA + SPECTRA_TILDA:
                     config['lineshape'] = 'Voigt'
                 if config['convolve'] not in CONVOLVE:
                     config['convolve'] = 'None'
