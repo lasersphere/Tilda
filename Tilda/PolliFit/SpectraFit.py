@@ -31,6 +31,7 @@ from Tilda.PolliFit.DBIsotope import DBIsotope
 import Tilda.PolliFit.Measurement.MeasLoad as MeasLoad
 from Tilda.PolliFit.Fitter import Fitter, print_colored
 import Tilda.PolliFit.Models.Spectrum as Spectrum
+import Tilda.PolliFit.Models.Convolved as Convolved
 
 
 LEGACY_PARS = {'lor': 'Gamma', 'gamma': 'Gamma', 'gau': 'sigma'}
@@ -97,8 +98,14 @@ def gen_model(config, iso, spectra_fit=None):
         spectra_fit.splitter_models.append(splitter_model)
 
     npeaks_model = mod.NPeak(model=splitter_model, n_peaks=config['npeaks'])
+
     if config['convolve'] != 'None':
-        npeaks_model = eval('mod.{}Convolved'.format(config['convolve']))(model=npeaks_model)
+        if config['convolve'] in mod.CONVOLVE:
+            npeaks_model = eval('mod.{}Convolved'.format(config['convolve']))(model=npeaks_model)
+        elif config['convolve'] in Convolved.CONVOLVE:
+            npeaks_model = eval('Convolved.{}Convolved'.format(config['convolve']))(model=npeaks_model)
+        else:
+            raise ValueError('Convolution kernel \'{}\' is not available.'.format(config['convolve']))
 
     offset = config['offset_order']
     x_cuts = None

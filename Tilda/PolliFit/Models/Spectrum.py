@@ -12,28 +12,27 @@ import qspec.models as mod
 SPECTRA = ['TestShape']
 
 
-class TestShape(mod.Spectrum):
+class TestShape(mod.Gauss):
     """
-    This is an example for a custom lineshape model created in PolliFit.
+    This is an example for a custom lineshape model created in PolliFit. The fwhm, min and max functions are the same
+    as in the parent class and could be omitted here.
     """
     def __init__(self):
         super().__init__()
         self.type = 'TestShape'
 
-        self._add_arg('freq', 1., False, False)
-        self._add_arg('ratio', 1., False, False)
-        self._add_arg('phase', 1., False, False)
+        self._add_arg('wobble', 1., False, False)
+        self._add_arg('wiggle', 1., False, False)
+        self._add_arg('phase', 0., False, False)
 
-    def evaluate(self, x, *args, **kwargs):  # Normalize to the maximum.
-        return np.sin(2 * np.pi * args[0] * x) * np.cos(2 * np.pi * args[0] * args[1] * (x - args[2]))
+    def evaluate(self, x, *args, **kwargs):
+        return (1 + args[1] * np.cos(2 * np.pi * args[2] / args[0] * (x + args[3]))) * super().evaluate(x, args[0])
 
     def fwhm(self):
-        f = self.vals[self.p['freq']]
-        r = self.vals[self.p['ratio']]
-        return abs(np.max([1 / f, 1 / (f * r)]))
+        return super().fwhm()
 
     def min(self):
-        return -2.5 * self.fwhm()
+        return super().min()
 
     def max(self):
-        return 2.5 * self.fwhm()
+        return super().max()
