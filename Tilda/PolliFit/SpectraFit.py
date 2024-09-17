@@ -21,7 +21,10 @@ and create them in the 'PolliFit.Models' folder similar to the existing example.
 
 import os
 import ast
+import pprint
 import sqlite3
+
+import numpy
 import numpy as np
 import qspec.models as mod
 
@@ -469,7 +472,8 @@ class SpectraFit:
                 continue
             pars = {self.fitter.models[i].names[j]: (pt, np.sqrt(pc[j]), self.fitter.models[i].fixes[j])
                     for j, (pt, pc) in enumerate(zip(popt[i], pcov[i]))}
-            execute(cur, 'INSERT OR REPLACE INTO FitRes (file, iso, run, rChi, pars) '
+            with numpy.printoptions(legacy='1.25'):
+                execute(cur, 'INSERT OR REPLACE INTO FitRes (file, iso, run, rChi, pars) '
                          'VALUES (?, ?, ?, ?, ?)', (file, self.fitter.iso[i].name, run, info['chi2'][i], str(pars)))
         con.commit()
         con.close()
