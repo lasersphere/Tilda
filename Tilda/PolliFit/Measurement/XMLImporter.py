@@ -376,6 +376,8 @@ class XMLImporter(SpecData):
                     (self.type, self.line, self.offset, self.accVolt, self.laserFreq,
                      self.col, self.voltDivRatio, self.lineMult, self.lineOffset, self.laserFreq_d) = db_ret[0]
                     self.col = bool(self.col)
+                    self.laserFreq = float(self.laserFreq)
+                    self.laserFreq_d = float(self.laserFreq_d)
                     # should be a string of a list of offset values for each track:
                     if isinstance(self.offset, float):
                         # old databases might still have just one value for the offset in the db

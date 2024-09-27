@@ -2,11 +2,28 @@
 Created on 18.02.2022
 
 @author: Patrick Mueller
+
+@description:
+This is the main script for the 'PolliFit/SpectraFit' tab.
+Here parameters are loaded from and saved to the DB, lineshape models are generated and DBIsotope objects are created.
+
+The connection to the GUI and all the GUI logic is implemented in the 'SpectraFitUi' class
+in the 'PolliFit.Gui.SpectraFitUi' script.
+
+The data fitting is handled by the 'Fitter' class in the 'PolliFit.Fitter' script,
+to which all 'fit options' are forwarded.
+
+The plotting of the data is done in the 'plot_model_fit' function in the 'PolliFit.MPLPlotter' script.
+
+CUSTOM LINESHAPE MODELS: To create custom lineshape models follow the examples in 'qspec.models'
+and create them in the 'PolliFit.Models' folder similar to the existing example.
 """
 
 import os
 import ast
 import sqlite3
+
+import numpy
 import numpy as np
 import qspec.models as mod
 
@@ -15,6 +32,8 @@ from Tilda.PolliFit import MPLPlotter as Plot
 from Tilda.PolliFit.DBIsotope import DBIsotope
 import Tilda.PolliFit.Measurement.MeasLoad as MeasLoad
 from Tilda.PolliFit.Fitter import Fitter, print_colored
+import Tilda.PolliFit.Models.Spectrum as Spectrum
+import Tilda.PolliFit.Models.Convolved as Convolved
 
 
 LEGACY_PARS = {'lor': 'Gamma', 'gamma': 'Gamma', 'gau': 'sigma'}
@@ -67,14 +86,29 @@ def gen_splitter_models(config, iso):
 
 def gen_model(config, iso, spectra_fit=None):
     splitter, args = gen_splitter_models(config, iso)
-    shape = eval('mod.{}'.format(config['lineshape']))
+
+    if config['lineshape'] in mod.SPECTRA:
+        shape = eval('mod.{}'.format(config['lineshape']))
+    elif config['lineshape'] in Spectrum.SPECTRA:
+        shape = eval('Spectrum.{}'.format(config['lineshape']))
+    else:
+        raise ValueError('Lineshape model \'{}\' is not available.'.format(config['lineshape']))
+
     splitter_model = mod.SplitterSummed([
         _splitter(shape(), *_args) for _splitter, _args in zip(splitter, args)])
     if spectra_fit is not None:
         spectra_fit.splitter_models.append(splitter_model)
+
     npeaks_model = mod.NPeak(model=splitter_model, n_peaks=config['npeaks'])
+
     if config['convolve'] != 'None':
-        npeaks_model = eval('mod.{}Convolved'.format(config['convolve']))(model=npeaks_model)
+        if config['convolve'] in mod.CONVOLVE:
+            npeaks_model = eval('mod.{}Convolved'.format(config['convolve']))(model=npeaks_model)
+        elif config['convolve'] in Convolved.CONVOLVE:
+            npeaks_model = eval('Convolved.{}Convolved'.format(config['convolve']))(model=npeaks_model)
+        else:
+            raise ValueError('Convolution kernel \'{}\' is not available.'.format(config['convolve']))
+
     offset = config['offset_order']
     x_cuts = None
     if config['offset_per_track']:
@@ -83,6 +117,7 @@ def gen_model(config, iso, spectra_fit=None):
     else:
         offset = [offset[0], ]
     offset_model = mod.Offset(model=npeaks_model, x_cuts=x_cuts, offsets=offset)
+
     return offset_model
 
 
@@ -436,7 +471,8 @@ class SpectraFit:
                 continue
             pars = {self.fitter.models[i].names[j]: (pt, np.sqrt(pc[j]), self.fitter.models[i].fixes[j])
                     for j, (pt, pc) in enumerate(zip(popt[i], pcov[i]))}
-            execute(cur, 'INSERT OR REPLACE INTO FitRes (file, iso, run, rChi, pars) '
+            with numpy.printoptions(legacy='1.25'):
+                execute(cur, 'INSERT OR REPLACE INTO FitRes (file, iso, run, rChi, pars) '
                          'VALUES (?, ?, ?, ?, ?)', (file, self.fitter.iso[i].name, run, info['chi2'][i], str(pars)))
         con.commit()
         con.close()
