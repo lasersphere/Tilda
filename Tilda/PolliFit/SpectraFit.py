@@ -21,7 +21,6 @@ and create them in the 'PolliFit.Models' folder similar to the existing example.
 
 import os
 import ast
-import pprint
 import sqlite3
 
 import numpy
