@@ -13,12 +13,17 @@ import sys
 import os
 import subprocess
 import matplotlib
+import sqlite3
+import numpy as np
 
 import Tilda.Application.Config as Cfg
 from Tilda.Service.FileOperations.FolderAndFileHandling import check_config_dir
 
 matplotlib.use('Qt5Agg')
 _cyclic_interval_ms = 50
+
+#Should fix numpy2.0 formatting issues
+sqlite3.register_adapter(np.generic, lambda v: v.item())
 
 
 def main():
