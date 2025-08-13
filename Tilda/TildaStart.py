@@ -24,6 +24,7 @@ _cyclic_interval_ms = 50
 
 #Should fix numpy2.0 formatting issues
 sqlite3.register_adapter(np.generic, lambda v: v.item())
+np.set_printoptions(threshold=sys.maxsize, linewidth=10**9)
 
 
 def main():
