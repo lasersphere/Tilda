@@ -13,11 +13,19 @@ import logging
 import functools
 from copy import deepcopy
 from datetime import timedelta
+from typing import Dict, List
 
 import Tilda.Application.Config as Cfg
 from Tilda.Interface.PreScanConfigUi.Ui_PreScanMain import Ui_PreScanMainWin
 from Tilda.Interface.DmmUi.ChooseDmmWidget import ChooseDmmWidget
 from Tilda.Interface.DmmUi.DMMWidgets import Ni4071Widg
+
+try:
+    import proteus
+    from proteus.InstanceObject import InstanceObject
+except ImportError:
+    proteus = None
+    InstanceObject = None
 
 
 class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
@@ -106,6 +114,22 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
 
         self.setup_volt_meas_from_main()
 
+        # --- Proteus related ---
+        self.proteus_scan_dict = self.get_proteus_scan_pars()
+        self.proteus_scan_dict_backup = deepcopy(self.proteus_scan_dict)
+        self.proteus_active_devices = None
+        self.proteus_cur_dev = None
+        self.proteus_devices: Dict[str, List[str]] = {}
+
+        # UI connections
+        self.listWidget_proteus_devices.itemClicked.connect(self.proteus_dev_selection_changed)
+        self.tableWidget_proteus_channels.itemClicked.connect(self.proteus_check_any_ch_active)
+        self.checkBox_proteus_measure.stateChanged.connect(self.proteus_measure_checkbox_changed)
+        # Hitting Enter in the instance field will trigger a reconnect and repopulate the device list
+        self.instanceLineEdit.returnPressed.connect(self.proteus_refresh_devices_from_instance)
+
+        self.setup_proteus_devs()
+
     def confirm(self):
         """
         when ok is pressed, values are stored in the parent track ui.
@@ -126,10 +150,17 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
                     if self.checkBox_triton_measure.isChecked() else {}
                 self.sql_scan_dict[self.pre_or_during_scan_str] = self.get_current_sql_settings() \
                     if self.check_sql_measure.isChecked() else {}
+                # Proteus:
+                if self.checkBox_proteus_measure.isChecked():
+                    self.proteus_check_any_ch_active()
+                else:
+                    self.proteus_scan_dict[self.pre_or_during_scan_str] = {}
                 self.parent_ui.buffer_pars['triton'] = self.triton_scan_dict
                 self.parent_ui.buffer_pars['sql'] = self.sql_scan_dict
+                self.parent_ui.buffer_pars['proteus'] = self.proteus_scan_dict
                 Cfg._main_instance.pre_scan_timeout_changed(self.doubleSpinBox_timeout_pre_scan_s.value())
                 Cfg._main_instance.sql_set_interval(self.d_interval.value())
+
                 # logging.info('set values to: ', Cfg._main_instance.scan_pars[self.active_iso]['measureVoltPars'])
 
             self.close()
@@ -146,7 +177,7 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
             self.voltage_reading.disconnect()
             self.parent_ui.close_pre_post_scan_win()
 
-    def pre_post_during_changed(self, pre_post_during_str, closing_widget = False):
+    def pre_post_during_changed(self, pre_post_during_str, closing_widget=False):
         """
         whenever this is changed, load stuff from main.
         :param: pre_post_during_str: the NEW tabs pre/post/during string
@@ -155,7 +186,8 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         self.current_meas_volt_settings[self.pre_or_during_scan_str] = self.get_current_meas_volt_pars()
         self.triton_scan_dict[self.pre_or_during_scan_str] = self.get_current_triton_settings()
         self.sql_scan_dict[self.pre_or_during_scan_str] = self.get_current_sql_settings()
-        if not closing_widget: #Do this only when switching between tabs
+        self.proteus_scan_dict[self.pre_or_during_scan_str] = self.get_current_proteus_settings()
+        if not closing_widget:  # Do this only when switching between tabs
             # remove all tabs to load them new from config
             while self.tabs.__len__() > 1:
                 dmm_name = self.tabWidget.tabText(1)
@@ -174,6 +206,7 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         self.setup_volt_meas_from_main(existing_config)
         self.setup_triton_devs()
         self.setup_sql_channels()
+        self.setup_proteus_devs()
 
     def enable_triton_widgets(self, enable_bool):
         """
@@ -831,6 +864,236 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         # now check if this should be measured anyhow:
         sql_dict = self.sql_scan_dict[self.pre_or_during_scan_str] if self.check_sql_measure.isChecked() else {}
         return sql_dict
+
+    """proteus related"""
+
+    def proteus_enable_widgets(self, enable: bool):
+        self.listWidget_proteus_devices.setEnabled(enable)
+        self.tableWidget_proteus_channels.setEnabled(enable)
+        self.checkBox_proteus_measure.setEnabled(True)  # allow toggling itself
+        # keep the instance field always enabled so the user can type the URI
+        self.instanceLineEdit.setEnabled(True)
+
+    def proteus_refresh_devices_from_instance(self):
+        """
+        Explicitly (re-)connect to the Proteus instance and populate the device list.
+        """
+        # Clear current list and table first
+        self.listWidget_proteus_devices.clear()
+        self.tableWidget_proteus_channels.setRowCount(0)
+        self.proteus_devices = {}
+
+        address = self.instanceLineEdit.text().strip()
+        if not address or address == "tcp://":
+            # Do not attempt a connection if the address is empty or just the placeholder.
+            self.proteusconnectionLabel.setText("Enter a valid instance address and press Enter to connect.")
+            return
+
+        if proteus is None or InstanceObject is None:
+            # proteus-lab wheel could not be imported
+            self.proteusconnectionLabel.setText("Proteus package is not available (see log for details).")
+            return
+
+        try:
+            inst = proteus.Instance()
+            inst.add_instance(address)
+            helper = InstanceObject(inst)
+            status = helper.known_devices()
+            # status is a dict: { "DeviceName": {"": type_id, "var1": type_id, ...}, ... }
+        except Exception as exc:
+            logging.error("Error while querying Proteus instance %s: %s", address, exc, exc_info=True)
+            self.proteusconnectionLabel.setText(f"Connection failed: {exc}")
+            return
+
+        # Build a simple device -> [channels] mapping and fill the list widget
+        for dev_name, vars_dict in status.items():
+            # skip the empty key "" which represents the device itself
+            channel_names = [vname for vname in vars_dict.keys() if vname != ""]
+            self.proteus_devices[dev_name] = channel_names
+
+            item = QtWidgets.QListWidgetItem(dev_name)
+            item.setFlags(
+                QtCore.Qt.ItemFlag.ItemIsUserCheckable
+                | QtCore.Qt.ItemFlag.ItemIsEnabled
+                | QtCore.Qt.ItemFlag.ItemIsSelectable
+            )
+            # Start with devices unchecked; user can select them manually
+            item.setCheckState(QtCore.Qt.CheckState.Unchecked)
+            self.listWidget_proteus_devices.addItem(item)
+
+        self.proteusconnectionLabel.setText(
+            f"Connected to {address}, found {len(self.proteus_devices)} device(s)."
+        )
+
+    def setup_proteus_devs(self):
+        """
+        Initialize Proteus tab with saved instance.
+
+        The user has to press Enter in the instanceLineEdit to trigger a connection.
+        """
+        mode = self.pre_or_during_scan_str
+        d = self.proteus_scan_dict.setdefault(mode, {})
+        instance = d.setdefault("instance", "tcp://")
+        d.setdefault("devices", {})
+
+        # Just show the stored instance address; do not try to connect yet.
+        self.instanceLineEdit.setText(instance)
+
+        # Start with empty UI; connection is explicit.
+        self.listWidget_proteus_devices.clear()
+        self.tableWidget_proteus_channels.setRowCount(0)
+        self.proteus_devices = {}
+
+        # Give the user a hint what to do.
+        self.proteusconnectionLabel.setText("Enter instance address and press Enter to connect.")
+
+    def proteus_measure_checkbox_changed(self, state):
+        """For now just enable/disable the device area, no connection yet."""
+        enabled = (state == 2)
+        # stash/restore dict per mode, so user doesn't lose selections later
+        mode = self.pre_or_during_scan_str
+        if not enabled:
+            self.proteus_scan_dict_backup[mode] = deepcopy(self.proteus_scan_dict.get(mode, {}))
+            self.proteus_scan_dict[mode] = {}  # cleared while disabled
+        else:
+            self.proteus_scan_dict[mode] = deepcopy(
+                self.proteus_scan_dict_backup.get(mode,
+                                                  {'instance': self.instanceLineEdit.text().strip(), 'devices': {}})
+            )
+        self.proteus_enable_widgets(enabled)
+
+    def get_proteus_scan_pars(self):
+        """
+        Load Proteus scan parameters (per mode). Shape:
+          {
+            'preScan':   {'instance': 'tcp://', 'devices': {}},
+            'duringScan':{'instance': 'tcp://', 'devices': {}},
+            'postScan':  {'instance': 'tcp://', 'devices': {}},
+          }
+        """
+        default_ret = {
+            'preScan': {'instance': 'tcp://', 'devices': {}},
+            'duringScan': {'instance': 'tcp://', 'devices': {}},
+            'postScan': {'instance': 'tcp://', 'devices': {}},
+        }
+        try:
+            prot = Cfg._main_instance.scan_pars[self.active_iso][self.act_track_name].get('proteus', {})
+            if not isinstance(prot, dict):
+                return default_ret
+            # normalize per mode
+            for k in ('preScan', 'duringScan', 'postScan'):
+                if k not in prot or not isinstance(prot[k], dict):
+                    prot[k] = {'instance': 'tcp://', 'devices': {}}
+                else:
+                    prot[k].setdefault('instance', 'tcp://')
+                    prot[k].setdefault('devices', {})
+            return prot
+        except Exception:
+            # no main available or structure missing → use defaults
+            return default_ret
+
+    def proteus_dev_selection_changed(self, item: QtWidgets.QListWidgetItem):
+        """
+        Called when a Proteus device in listWidget_proteus_devices is clicked.
+        Shows that device's channels in tableWidget_proteus_channels.
+        """
+        if item is None:
+            return
+
+        device = item.text()
+        selected = (item.checkState() == QtCore.Qt.CheckState.Checked)
+
+        # Ensure dicts for current mode exist
+        mode = self.pre_or_during_scan_str
+        d = self.proteus_scan_dict.setdefault(mode, {})
+        devs = d.setdefault("devices", {})
+
+        # If device got unchecked -> remove from config and clear table
+        if not selected:
+            devs.pop(device, None)
+            self.tableWidget_proteus_channels.setRowCount(0)
+            return
+
+        # If device got checked -> create or restore its channel map
+        existing = devs.get(device, {})
+        if not existing:
+            # Use whatever we currently know about channels for this device.
+            # For now, we rely on a placeholder self.proteus_devices (set elsewhere).
+            ch_list = self.proteus_devices.get(device, [])
+            existing = {ch: {"required": 1, "acquired": 0, "data": []} for ch in ch_list}
+            devs[device] = existing
+
+        # Populate the table
+        self.tableWidget_proteus_channels.setColumnCount(2)
+        self.tableWidget_proteus_channels.setHorizontalHeaderLabels(["ch name", "# of samples"])
+        self.tableWidget_proteus_channels.setRowCount(len(existing))
+
+        for row, (ch, conf) in enumerate(existing.items()):
+            ch_item = QtWidgets.QTableWidgetItem(ch)
+            ch_item.setFlags(QtCore.Qt.ItemFlag.ItemIsUserCheckable | QtCore.Qt.ItemFlag.ItemIsEnabled)
+            ch_item.setCheckState(QtCore.Qt.CheckState.Checked)
+            req_item = QtWidgets.QTableWidgetItem(str(conf.get("required", 1)))
+
+            self.tableWidget_proteus_channels.setItem(row, 0, ch_item)
+            self.tableWidget_proteus_channels.setItem(row, 1, req_item)
+
+    def proteus_check_any_ch_active(self):
+        """
+        Reads the table and updates self.proteus_scan_dict[mode]['devices'][device]
+        with only the checked channels and their required counts.
+        """
+        # Determine current device by the current list selection
+        cur_items = self.listWidget_proteus_devices.selectedItems()
+        if not cur_items:
+            return
+        device = cur_items[0].text()
+
+        mode = self.pre_or_during_scan_str
+        d = self.proteus_scan_dict.setdefault(mode, {})
+        devs = d.setdefault("devices", {})
+
+        # Rebuild the channel dict for this device from the table
+        ch_map = {}
+        rows = self.tableWidget_proteus_channels.rowCount()
+        for r in range(rows):
+            ch_item = self.tableWidget_proteus_channels.item(r, 0)
+            req_item = self.tableWidget_proteus_channels.item(r, 1)
+            if ch_item and ch_item.checkState() == QtCore.Qt.CheckState.Checked:
+                try:
+                    req = int(req_item.text()) if req_item else 1
+                except Exception:
+                    req = 1
+                ch_map[ch_item.text()] = {"required": req, "acquired": 0, "data": []}
+
+        if ch_map:
+            devs[device] = ch_map
+        else:
+            # If nothing selected, uncheck the device and remove it
+            devs.pop(device, None)
+            # also uncheck the item visually
+            matches = self.listWidget_proteus_devices.findItems(device, QtCore.Qt.MatchFlag.MatchExactly)
+            if matches:
+                matches[0].setCheckState(QtCore.Qt.CheckState.Unchecked)
+
+    def get_current_proteus_settings(self):
+        """
+        Return the current proteus dict for the active mode.
+        Updates instance + channel selection from GUI beforehand
+        """
+        mode = self.pre_or_during_scan_str
+        d = self.proteus_scan_dict.setdefault(mode, {})
+        # Take instance from line_edit
+        txt = self.instanceLineEdit.text().strip()
+        if txt:
+            d["instance"] = txt
+        else:
+            d.setdefault("instance", "tcp://")
+
+        # Copy channel selection
+        self.proteus_check_any_ch_active()
+
+        # Give empty dict if nothing selected
+        return d if self.checkBox_proteus_measure.isChecked() else {}
 
 
 if __name__ == '__main__':

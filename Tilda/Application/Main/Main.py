@@ -171,7 +171,7 @@ class Main(QtCore.QObject):
         if self.application is not None:
             self.application.processEvents()
             elapsed_proc_evts_ms = (datetime.now() - st).total_seconds() * 1000
-            if elapsed_proc_evts_ms > 10:
+            if elapsed_proc_evts_ms > 100:
                 logging.warning(
                     'Processing events in beginning of cyclic loop took unexpected long: %.1f ms'
                     % elapsed_proc_evts_ms)
@@ -1127,7 +1127,7 @@ class Main(QtCore.QObject):
         will add the scan_dict to self.scan_pars,
         WITHOUT accessing the database first.
         This is useful when loading settings from file instead of db
-        :param scan_dict: dict, scan_dict, see ..\Service\Scan\draftScanParameters.py
+        :param scan_dict: dict, scan_dict, see ..\\Service\\Scan\\draftScanParameters.py
         :return: str, name of isotope
         """
         iso = scan_dict['isotopeData']['isotope']
