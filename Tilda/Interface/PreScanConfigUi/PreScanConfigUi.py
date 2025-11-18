@@ -14,6 +14,7 @@ import functools
 from copy import deepcopy
 from datetime import timedelta
 from typing import Dict, List
+import threading
 
 import Tilda.Application.Config as Cfg
 from Tilda.Interface.PreScanConfigUi.Ui_PreScanMain import Ui_PreScanMainWin
@@ -26,6 +27,15 @@ try:
 except ImportError:
     proteus = None
     InstanceObject = None
+# Default configuration for the local Proteus client instance (lab build)
+PROTEUS_INSTANCE_CONFIG = {
+    "instance_type": "zmq",
+    "protocol": "tcp",
+    "command_port": 6000,
+    "publish_port": 6001,
+    "port_range": 1000,
+    "port_attempts": 50,
+}
 
 
 class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
@@ -121,11 +131,20 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         self.proteus_cur_dev = None
         self.proteus_devices: Dict[str, List[str]] = {}
 
+        # Background worker state for Proteus discovery
+        self._proteus_worker_thread = None
+        self._proteus_worker_running = False
+        self._proteus_worker_result = None
+        self._proteus_worker_error = None
+        self._proteus_poll_timer = QtCore.QTimer(self)
+        self._proteus_poll_timer.setInterval(200)
+        self._proteus_poll_timer.timeout.connect(self._proteus_poll_worker)
+
         # UI connections
         self.listWidget_proteus_devices.itemClicked.connect(self.proteus_dev_selection_changed)
         self.tableWidget_proteus_channels.itemClicked.connect(self.proteus_check_any_ch_active)
         self.checkBox_proteus_measure.stateChanged.connect(self.proteus_measure_checkbox_changed)
-        # Hitting Enter in the instance field will trigger a reconnect and repopulate the device list
+        # Pressing Enter in the instance field triggers a refresh of the device list
         self.instanceLineEdit.returnPressed.connect(self.proteus_refresh_devices_from_instance)
 
         self.setup_proteus_devs()
@@ -876,9 +895,11 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
 
     def proteus_refresh_devices_from_instance(self):
         """
-        Explicitly (re-)connect to the Proteus instance and populate the device list.
+        Start a background thread that connects to the Proteus instance and fetches known devices.
+
+        The result is processed in _proteus_poll_worker so the GUI thread does not block.
         """
-        # Clear current list and table first
+        # Clear current UI first
         self.listWidget_proteus_devices.clear()
         self.tableWidget_proteus_channels.setRowCount(0)
         self.proteus_devices = {}
@@ -889,28 +910,91 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
             self.proteusconnectionLabel.setText("Enter a valid instance address and press Enter to connect.")
             return
 
-        if proteus is None or InstanceObject is None:
-            # proteus-lab wheel could not be imported
-            self.proteusconnectionLabel.setText("Proteus package is not available (see log for details).")
+        if self._proteus_worker_running:
+            # Avoid starting another worker while one is still running
+            self.proteusconnectionLabel.setText("Proteus discovery already running...")
             return
 
-        try:
-            inst = proteus.Instance()
-            inst.add_instance(address)
-            helper = InstanceObject(inst)
-            status = helper.known_devices()
-            # status is a dict: { "DeviceName": {"": type_id, "var1": type_id, ...}, ... }
-        except Exception as exc:
-            logging.error("Error while querying Proteus instance %s: %s", address, exc, exc_info=True)
-            self.proteusconnectionLabel.setText(f"Connection failed: {exc}")
+        # Reset worker state
+        self._proteus_worker_result = None
+        self._proteus_worker_error = None
+        self._proteus_worker_running = True
+        self.proteusconnectionLabel.setText(f"Connecting to {address}...")
+
+        def worker(addr: str):
+            logging.info("Proteus worker: starting for %s", addr)
+            try:
+                if proteus is None or InstanceObject is None:
+                    self._proteus_worker_error = "Proteus package is not available (see log for details)."
+                    logging.warning("Proteus worker: proteus / InstanceObject is None")
+                    return
+
+                logging.info("Proteus worker: creating Instance() with lab config")
+                with proteus.Instance(**PROTEUS_INSTANCE_CONFIG) as inst:
+                    logging.info("Proteus worker: add_instance(%s)", addr)
+                    inst.add_instance(addr)
+
+                    logging.info("Proteus worker: creating InstanceObject")
+                    helper = InstanceObject(inst)
+
+                    logging.info("Proteus worker: calling known_devices()")
+                    status = helper.known_devices()
+                    logging.info(
+                        "Proteus worker: known_devices() returned with devices: %s",
+                        list(status.keys()) if isinstance(status, dict) else type(status),
+                    )
+
+                    self._proteus_worker_result = status
+
+            except Exception as exc:
+                logging.error("Proteus worker: error while querying %s: %s", addr, exc, exc_info=True)
+                self._proteus_worker_error = f"Connection failed: {exc}"
+            finally:
+                logging.info("Proteus worker: finished for %s", addr)
+                self._proteus_worker_running = False
+
+        # Launch background thread
+        self._proteus_worker_thread = threading.Thread(target=worker, args=(address,), daemon=True)
+        self._proteus_worker_thread.start()
+        # Start timer that polls for worker completion
+        self._proteus_poll_timer.start()
+
+    def _proteus_poll_worker(self):
+        """
+        Periodically called by a QTimer to check if the background worker has finished.
+
+        Updates the UI once result or error is available.
+        """
+        if self._proteus_worker_running:
+            # Still working; nothing to do yet.
             return
 
-        # Build a simple device -> [channels] mapping and fill the list widget
+        # Worker has finished; stop timer
+        self._proteus_poll_timer.stop()
+
+        if self._proteus_worker_error:
+            # Show error from worker
+            self.proteusconnectionLabel.setText(self._proteus_worker_error)
+            self._proteus_worker_error = None
+            return
+
+        status = self._proteus_worker_result
+        self._proteus_worker_result = None
+
+        if not isinstance(status, dict) or not status:
+            self.proteusconnectionLabel.setText("Connected, but no devices were reported.")
+            return
+
+        # Convert status to simple device -> channels mapping
+        self.proteus_devices = {}
         for dev_name, vars_dict in status.items():
-            # skip the empty key "" which represents the device itself
+            # Skip the empty key "" which represents the device itself
             channel_names = [vname for vname in vars_dict.keys() if vname != ""]
             self.proteus_devices[dev_name] = channel_names
 
+        # Fill the list widget in the GUI thread
+        self.listWidget_proteus_devices.clear()
+        for dev_name in sorted(self.proteus_devices.keys()):
             item = QtWidgets.QListWidgetItem(dev_name)
             item.setFlags(
                 QtCore.Qt.ItemFlag.ItemIsUserCheckable
@@ -921,9 +1005,11 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
             item.setCheckState(QtCore.Qt.CheckState.Unchecked)
             self.listWidget_proteus_devices.addItem(item)
 
+        address = self.instanceLineEdit.text().strip()
         self.proteusconnectionLabel.setText(
             f"Connected to {address}, found {len(self.proteus_devices)} device(s)."
         )
+
 
     def setup_proteus_devs(self):
         """
