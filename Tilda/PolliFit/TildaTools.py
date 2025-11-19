@@ -360,6 +360,31 @@ def save_sql_to_xml(file, tr_name, sql_dict, pre_during_post_scan_str='preScan')
             xmlWriteDict(pre_ele, sql_dict)
             save_xml(root, file)
 
+def save_proteus_to_xml(file, tr_name, proteus_dict, pre_during_post_scan_str='preScan'):
+    """
+    Will save the proteus log to the given xml file.
+
+    :param file: str, path of the xml file
+    :param tr_name: str, track name
+    :param proteus_dict: dict, structure as returned by ProteusLogger.log,
+                         e.g. {'Device': {'var': {'required': ..., 'data': [...], 'acquired': ...}, ...}, ...}
+    :param pre_during_post_scan_str: str, preScan / duringScan / postScan
+    :return: None
+    """
+    if file:
+        if proteus_dict:
+            logging.info('proteus %s log complete, saving to: %s' %
+                         (pre_during_post_scan_str, file))
+            logging.debug('saving directly to xml file: ' + str(proteus_dict))
+            root = load_xml(file)
+            tracks = xmlFindOrCreateSubElement(root, 'tracks')
+            track = xmlFindOrCreateSubElement(tracks, tr_name)
+            track_header = xmlFindOrCreateSubElement(track, 'header')
+            proteus_ele = xmlFindOrCreateSubElement(track_header, 'proteus')
+            pre_ele = xmlFindOrCreateSubElement(proteus_ele, pre_during_post_scan_str)
+            xmlWriteDict(pre_ele, proteus_dict)
+            save_xml(root, file)
+
 
 def evaluate_strings_in_dict(dict_to_convert):
     """
