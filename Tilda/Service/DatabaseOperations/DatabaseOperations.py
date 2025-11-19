@@ -93,7 +93,8 @@ def check_for_missing_columns_scan_pars(db):
         (22, 'triton', 'TEXT'),
         (23, 'outbits', 'TEXT'),
         (24, 'scanDevDict', 'TEXT'),
-        (25, 'sql', 'TEXT')
+        (25, 'sql', 'TEXT'),
+        (26, 'proteus', 'TEXT')
     ]
     con = sqlite3.connect(db)
     cur = con.cursor()
@@ -168,7 +169,8 @@ def add_scan_dict_to_db(db, scandict, n_of_track, track_key='track0', overwrite=
                 triton = ?,
                 sql = ?,
                 outbits = ?,
-                scanDevDict = ?
+                scanDevDict = ?,
+                proteus = ?
                 WHERE iso = ? AND type = ? AND track = ?''',
                     (
                         start,
@@ -193,6 +195,7 @@ def add_scan_dict_to_db(db, scandict, n_of_track, track_key='track0', overwrite=
                         str(trackd['sql']),
                         str(trackd['outbits']),
                         str(scan_dev_dict),
+                        str(trackd.get('proteus', {})),
                         iso, sctype, n_of_track)
                     )
         con.commit()
@@ -313,7 +316,7 @@ def extract_track_dict_from_db(database_path_str, iso, sctype, tracknum):
           postAccOffsetVolt, activePmtList, colDirTrue,
            sequencerDict, waitForKepco1us, waitAfterReset1us,
            triggerDict,
-           measureVoltPars, accVolt, laserFreq, pulsePattern, triton, outbits, scanDevDict, sql
+           measureVoltPars, accVolt, laserFreq, pulsePattern, triton, outbits, scanDevDict, sql, proteus
         FROM ScanPars WHERE iso = ? AND type = ? AND track = ?
         ''', (iso, sctype, tracknum,)
     )
@@ -321,10 +324,19 @@ def extract_track_dict_from_db(database_path_str, iso, sctype, tracknum):
     if data is None:
         return None
     data = list(data)
+
+    # Last column: proteus
+    proteus = data.pop(-1)
+    scand[selected_tr_name]['proteus'] = ast.literal_eval(proteus) if proteus is not None else {}
+
+    # Next: sql
     sql = data.pop(-1)
     scand[selected_tr_name]['sql'] = ast.literal_eval(sql) if sql is not None else {}
+
+    # Next: scanDevDict
     scan_dev_dict = data.pop(-1)
     scand[selected_tr_name]['scanDevice'] = ast.literal_eval(scan_dev_dict) if scan_dev_dict is not None else {}
+
     scand[selected_tr_name] = clean_pre_post_scan_set_point_in_scan_dict(scand[selected_tr_name])
     dac_start = data.pop(0)  # float
     dac_stepsize = data.pop(0)  # float
