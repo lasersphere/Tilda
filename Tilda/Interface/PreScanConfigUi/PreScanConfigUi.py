@@ -895,9 +895,10 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
 
     def proteus_refresh_devices_from_instance(self):
         """
-        Start a background thread that connects to the Proteus instance and fetches known devices.
+        Connect to a Proteus instance and populate the device list.
 
-        The result is processed in _proteus_poll_worker so the GUI thread does not block.
+        This runs the actual network work in a background thread so the GUI
+        stays responsive. The result is handled by _proteus_poll_worker().
         """
         # Clear current UI first
         self.listWidget_proteus_devices.clear()
@@ -907,8 +908,25 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         address = self.instanceLineEdit.text().strip()
         if not address or address == "tcp://":
             # Do not attempt a connection if the address is empty or just the placeholder.
-            self.proteusconnectionLabel.setText("Enter a valid instance address and press Enter to connect.")
+            self.proteusconnectionLabel.setText(
+                "Enter a valid instance address and press Enter to connect."
+            )
             return
+
+        # ---- remember shared instance for all modes ----
+        self._proteus_instance_addr = address
+        # Update current mode
+        mode = self.pre_or_during_scan_str
+        d = self.proteus_scan_dict.setdefault(mode, {})
+        d["instance"] = address
+        d.setdefault("devices", {})
+        # Propagate to the other modes as well
+        for k in ("preScan", "duringScan", "postScan"):
+            if k == mode:
+                continue
+            dd = self.proteus_scan_dict.setdefault(k, {})
+            dd.setdefault("devices", {})
+            dd["instance"] = address
 
         if self._proteus_worker_running:
             # Avoid starting another worker while one is still running
@@ -925,7 +943,9 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
             logging.info("Proteus worker: starting for %s", addr)
             try:
                 if proteus is None or InstanceObject is None:
-                    self._proteus_worker_error = "Proteus package is not available (see log for details)."
+                    self._proteus_worker_error = (
+                        "Proteus package is not available (see log for details)."
+                    )
                     logging.warning("Proteus worker: proteus / InstanceObject is None")
                     return
 
@@ -947,14 +967,21 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
                     self._proteus_worker_result = status
 
             except Exception as exc:
-                logging.error("Proteus worker: error while querying %s: %s", addr, exc, exc_info=True)
+                logging.error(
+                    "Proteus worker: error while querying %s: %s",
+                    addr,
+                    exc,
+                    exc_info=True,
+                )
                 self._proteus_worker_error = f"Connection failed: {exc}"
             finally:
                 logging.info("Proteus worker: finished for %s", addr)
                 self._proteus_worker_running = False
 
         # Launch background thread
-        self._proteus_worker_thread = threading.Thread(target=worker, args=(address,), daemon=True)
+        self._proteus_worker_thread = threading.Thread(
+            target=worker, args=(address,), daemon=True
+        )
         self._proteus_worker_thread.start()
         # Start timer that polls for worker completion
         self._proteus_poll_timer.start()
@@ -1031,15 +1058,50 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         """
         Initialize Proteus tab from the saved config.
 
-        - Restores the instance URI.
-        - Restores the 'measure' checkbox.
-        - If enabled and an instance is set, automatically starts a discovery
-          so devices/channels are shown without the user having to press Enter.
+        - Uses a shared instance URI across pre/during/post.
+        - Restores the 'measure' checkbox for the current mode.
+        - If we already discovered devices, just rebuild the view
+          without reconnecting so the connection appears to stay.
         """
         mode = self.pre_or_during_scan_str
         d = self.proteus_scan_dict.setdefault(mode, {})
-        instance = d.setdefault("instance", "tcp://")
         d.setdefault("devices", {})
+
+        # --- Determine a shared instance address ---
+        # Start with whatever we already remember in this object.
+        instance = getattr(self, "_proteus_instance_addr", None)
+        if not instance:
+            instance = d.get("instance", "tcp://")
+
+        # If we still only have the placeholder, try to read from main/DB.
+        if (not instance or instance == "tcp://") and self.active_iso and self.act_track_name:
+            try:
+                prot_db = Cfg._main_instance.scan_pars[self.active_iso][self.act_track_name].get("proteus", {})
+                for k in ("preScan", "duringScan", "postScan"):
+                    blk = prot_db.get(k, {})
+                    inst_db = str(blk.get("instance", "") or "").strip()
+                    if inst_db and inst_db != "tcp://":
+                        instance = inst_db
+                        # Update our in-memory structures to use this shared instance.
+                        self._proteus_instance_addr = inst_db
+                        for kk in ("preScan", "duringScan", "postScan"):
+                            dd = self.proteus_scan_dict.setdefault(kk, {})
+                            dd.setdefault("devices", {})
+                            dd["instance"] = inst_db
+                        break
+            except Exception as e:
+                logging.warning(
+                    "setup_proteus_devs: could not read Proteus instance from main.scan_pars: %s",
+                    e,
+                )
+
+        if not instance:
+            instance = "tcp://"
+
+        # Store back the resolved instance.
+        self._proteus_instance_addr = instance
+        d["instance"] = instance
+        logging.info("setup_proteus_devs: instance=%r, prot_dict=%r", instance, self.proteus_scan_dict)
 
         # Determine whether Proteus logging is enabled for this mode.
         enabled = bool(d.get("enabled", bool(d["devices"])))
@@ -1047,22 +1109,66 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         # Restore checkbox state without firing the signal handler.
         self.checkBox_proteus_measure.blockSignals(True)
         self.checkBox_proteus_measure.setChecked(
-            QtCore.Qt.CheckState.Checked if enabled else QtCore.Qt.CheckState.Unchecked)
+            QtCore.Qt.CheckState.Checked if enabled else QtCore.Qt.CheckState.Unchecked
+        )
         self.checkBox_proteus_measure.blockSignals(False)
 
         # Enable/disable widgets accordingly.
         self.proteus_enable_widgets(enabled)
 
-        # Restore the instance address in the line edit.
-        self.instanceLineEdit.setText(instance)
+        # Only set the line edit from the shared instance if it is empty.
+        # This way, user edits are not overwritten when switching modes.
+        # --- Keep the instance field always enabled so the user can type ---
+        self.instanceLineEdit.setEnabled(True)
 
-        # Clear current UI state.
+        # Only override the line edit if it is effectively "empty":
+        #   - truly empty
+        #   - or still at the placeholder "tcp://"
+        self.instanceLineEdit.blockSignals(True)
+        current_txt = self.instanceLineEdit.text().strip()
+        if not current_txt or current_txt == "tcp://":
+            logging.info(
+                "PreScanConfigUi.setup_proteus_devs: writing instance %r into lineEdit (was %r)",
+                instance, current_txt
+            )
+            self.instanceLineEdit.setText(instance)
+        self.instanceLineEdit.blockSignals(False)
+
+        # Clear only the per-mode *view*, not the global device cache.
         self.listWidget_proteus_devices.clear()
         self.tableWidget_proteus_channels.setRowCount(0)
-        self.proteus_devices = {}
 
-        # If Proteus is enabled and we have a non-placeholder instance URI,
-        # automatically trigger a reconnect / discovery.
+        # If we already have a discovered device list, just rebuild the view
+        # for this mode without reconnecting.
+        if self.proteus_devices:
+            devs_cfg = d.get("devices", {})
+            first_checked_item = None
+            for dev_name in sorted(self.proteus_devices.keys()):
+                item = QtWidgets.QListWidgetItem(dev_name)
+                item.setFlags(
+                    QtCore.Qt.ItemFlag.ItemIsUserCheckable
+                    | QtCore.Qt.ItemFlag.ItemIsEnabled
+                    | QtCore.Qt.ItemFlag.ItemIsSelectable
+                )
+                if dev_name in devs_cfg:
+                    item.setCheckState(QtCore.Qt.CheckState.Checked)
+                    if first_checked_item is None:
+                        first_checked_item = item
+                else:
+                    item.setCheckState(QtCore.Qt.CheckState.Unchecked)
+                self.listWidget_proteus_devices.addItem(item)
+
+            if first_checked_item is not None:
+                self.listWidget_proteus_devices.setCurrentItem(first_checked_item)
+                self.proteus_dev_selection_changed(first_checked_item)
+
+            # Do not touch the connection label here – whatever the last
+            # connection attempt set (Connected to X...) should stay visible
+            # when switching modes.
+            return
+
+        # No devices discovered yet: optionally auto-connect once,
+        # otherwise just show helper text.
         if enabled and instance and instance != "tcp://":
             QtCore.QTimer.singleShot(0, self.proteus_refresh_devices_from_instance)
         else:
@@ -1093,20 +1199,21 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
           }
 
         Preference:
-          1) If the parent TrackUi has an unsaved buffer_pars['proteus'],
+          1) If the parent TrackUi has a non-empty buffer_pars['proteus'],
              use that (so reopening the dialog in the same session shows
              what you just configured).
-          2) Otherwise, fall back to Cfg._main_instance.scan_pars.
+          2) Otherwise, fall back to Cfg._main_instance.scan_pars
+             (i.e. what was read from the SQL database).
         """
         default_ret = {
-            'preScan': {'instance': 'tcp://', 'devices': {}},
-            'duringScan': {'instance': 'tcp://', 'devices': {}},
-            'postScan': {'instance': 'tcp://', 'devices': {}},
+            'preScan': {'instance': 'tcp://', 'devices': {}, 'enabled': False},
+            'duringScan': {'instance': 'tcp://', 'devices': {}, 'enabled': False},
+            'postScan': {'instance': 'tcp://', 'devices': {}, 'enabled': False},
         }
 
         prot = None
 
-        # 1) Prefer the buffer on the parent TrackUi (where confirm() writes)
+        # 1) try unsaved settings from the TrackUi buffer
         try:
             if self.parent_ui is not None:
                 buf = getattr(self.parent_ui, "buffer_pars", None)
@@ -1115,25 +1222,43 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         except Exception:
             prot = None
 
-        # 2) Fall back to scan_pars in the main instance
-        if prot is None:
+        # IMPORTANT: if the buffer is missing OR empty, fall back to main/DB
+        if not isinstance(prot, dict) or not prot:
             try:
-                prot = Cfg._main_instance.scan_pars[self.active_iso][self.act_track_name].get(
-                    'proteus', {}
+                prot = deepcopy(
+                    Cfg._main_instance.scan_pars[self.active_iso][self.act_track_name].get('proteus', {})
                 )
             except Exception:
                 prot = None
 
+        # If we still don't have anything usable, use the defaults
         if not isinstance(prot, dict) or not prot:
             prot = default_ret
 
         # Normalise per mode
         for k in ('preScan', 'duringScan', 'postScan'):
             if k not in prot or not isinstance(prot[k], dict):
-                prot[k] = {'instance': 'tcp://', 'devices': {}}
+                prot[k] = {'instance': 'tcp://', 'devices': {}, 'enabled': False}
             else:
                 prot[k].setdefault('instance', 'tcp://')
                 prot[k].setdefault('devices', {})
+                # if enabled wasn't stored, infer it from "has devices"
+                prot[k].setdefault('enabled', bool(prot[k]['devices']))
+
+        # Pick the first non-placeholder instance from pre/during/post.
+        shared = None
+        for k in ('preScan', 'duringScan', 'postScan'):
+            inst = str(prot[k].get('instance', '') or '').strip()
+            if inst and inst != 'tcp://':
+                shared = inst
+                break
+
+        if shared:
+            # Remember for later; setup_proteus_devs() will use this
+            self._proteus_instance_addr = shared
+        else:
+            # No real instance stored yet; keep a placeholder
+            self._proteus_instance_addr = 'tcp://'
 
         return prot
 
@@ -1223,15 +1348,23 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
     def get_current_proteus_settings(self):
         """
         Return the current proteus dict for the active mode.
-        Updates instance + channel selection from GUI beforehand
+        Updates instance + channel selection from GUI beforehand.
         """
         mode = self.pre_or_during_scan_str
         d = self.proteus_scan_dict.setdefault(mode, {})
 
-        # Take instance from line_edit
+        # Take instance from line_edit and propagate as shared
         txt = self.instanceLineEdit.text().strip()
         if txt:
             d["instance"] = txt
+            self._proteus_instance_addr = txt
+            # propagate to other modes as well
+            for k in ("preScan", "duringScan", "postScan"):
+                if k == mode:
+                    continue
+                dd = self.proteus_scan_dict.setdefault(k, {})
+                dd.setdefault("devices", {})
+                dd["instance"] = txt
         else:
             d.setdefault("instance", "tcp://")
 
