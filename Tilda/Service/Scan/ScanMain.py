@@ -1281,11 +1281,11 @@ class ScanMain(QObject):
     def prepare_proteus_for_scan(
             self,
             proteus_scan_dict: dict,
-            act_track_name: str,
-            pre_post_scan_str: str,
+            pre_post_scan_str: str = 'preScan',
+            track_name: str = 'track0',
     ) -> None:
         """
-        Prepare Proteus logging for a given track and pre/during/post_phase.
+        Prepare Proteus logging for a given track and pre/during/post phase.
 
         If no instance/devices are configured or if anything goes wrong while
         creating the bridge, Proteus logging is disabled and the scan proceeds
@@ -1300,22 +1300,22 @@ class ScanMain(QObject):
         devices_cfg = (cfg.get("devices") or {}) or {}
 
         if not instance_addr or not devices_cfg:
+            # Nothing configured for this phase -> do not use Proteus.
             self.proteus_logger = None
             self.proteus_bridge = None
-            self.proteus_logger_done = True  # optional, depending on your members
+            self.proteus_logger_done = True  # optional; not used elsewhere
             self.proteus_logger_running = False
             self.proteus_logger_timeout = False
             self.proteus_logger_paused = False
             self.proteus_logger_save_on_timeout = False
             self.proteus_logger_timeout_time = None
             self.proteus_logger_pre_post_scan_str = pre_post_scan_str
-            self.proteus_logger_track_name = act_track_name
+            self.proteus_logger_track_name = track_name
 
-            self.proteus_logger_done = True
             logging.info(
                 "prepare_proteus_for_scan: no instance/devices configured for %s/%s",
                 pre_post_scan_str,
-                act_track_name,
+                track_name,
             )
             return
 
@@ -1327,7 +1327,7 @@ class ScanMain(QObject):
         logger.setup_log(
             {"devices": devices_cfg},
             pre_post_scan_str,
-            act_track_name,
+            track_name,
         )
 
         try:
@@ -1339,8 +1339,7 @@ class ScanMain(QObject):
                 exc,
                 exc_info=True,
             )
-            # Do NOT leave a half-configured logger behind; otherwise the
-            # pre-scan will wait forever until timeout.
+            # Do NOT leave a half-configured logger behind.
             self.proteus_logger = None
             self.proteus_bridge = None
             self.proteus_logger_done = True
@@ -1354,7 +1353,7 @@ class ScanMain(QObject):
                 "prepare_proteus_for_scan: error while connecting/configuring Proteus "
                 "for %s/%s (%s). Proteus logging will be disabled.",
                 pre_post_scan_str,
-                act_track_name,
+                track_name,
                 exc,
                 exc_info=True,
             )
@@ -1372,13 +1371,13 @@ class ScanMain(QObject):
         self.proteus_logger_save_on_timeout = False
         self.proteus_logger_timeout_time = None
         self.proteus_logger_pre_post_scan_str = pre_post_scan_str
-        self.proteus_logger_track_name = act_track_name
+        self.proteus_logger_track_name = track_name
 
         logging.info(
             "prepare_proteus_for_scan: Proteus logging enabled for %s/%s, "
             "instance %s, devices %s",
             pre_post_scan_str,
-            act_track_name,
+            track_name,
             instance_addr,
             list(devices_cfg.keys()),
         )
@@ -1400,16 +1399,16 @@ class ScanMain(QObject):
 
     def check_proteus_log_complete(
             self,
-            iso_name: str,
-            act_track_name: str,
-            pre_post_scan_str: str,
+            scan_dict,
+            pre_post_scan_str,
+            act_track_name,
             force_save_continue: bool = False,
     ) -> bool:
         """
         Returns True when Proteus logging for this phase is finished.
 
         If no Proteus logger is active, this is immediately True so that
-        the scan does not wait for the 60 s timeout.
+        the scan does not wait for the timeout.
         """
         # No logger configured -> nothing to wait for.
         if self.proteus_logger is None:
@@ -1419,7 +1418,7 @@ class ScanMain(QObject):
 
         if completed or force_save_continue:
             # Save whatever we have and stop.
-            self.save_proteus_log(iso_name, act_track_name, pre_post_scan_str)
+            self.save_proteus_log(scan_dict, act_track_name, pre_post_scan_str)
             self.abort_proteus_log()
             return True
 

@@ -87,23 +87,24 @@ class ProteusLogger:
     # Data updates
     # ------------------------------------------------------------------ #
 
-    def handle_status_update(self, device_name: str, channel_name: str, value) -> None:
+    def handle_status_update(self, device, variable, value):
         """
-        Called by the Proteus bridge whenever a device variable changes.
+        Called by TildaProteusBridge when a subscribed variable changes.
         """
         if not self.logging:
             return
 
-        dev = self.devices.get(device_name)
-        if dev is None:
-            return
-        ch = dev.get(channel_name)
-        if ch is None:
-            return
+        logger.debug(
+            "%s: update %s.%s -> %r", self.name, device, variable, value
+        )
 
-        ch["data"].append(value)
-        ch["acquired"] = ch.get("acquired", 0) + 1
+        dev_dict = self.devices.setdefault(device, {})
+        var_dict = dev_dict.setdefault(
+            variable, {"required": 0, "acquired": 0, "data": []}
+        )
 
+        var_dict["data"].append(value)
+        var_dict["acquired"] += 1
         self._update_complete_flag()
 
     def _update_complete_flag(self) -> None:
