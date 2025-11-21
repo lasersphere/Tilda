@@ -95,7 +95,7 @@ class ScanMain(QObject):
         self.sql_pre_scan_done = False  # bool to use when pre/during/post scan measurement of sql stream is completed
 
         # helper object for logging Proteus variables (logic lives on the Proteus side)
-        self.proteus_logger = ProteusLogger()
+        self.proteus_logger = None
         self.proteus_bridge: Optional[TildaProteusBridge] = None
         # bool to use when pre/during/post scan measurement of proteus is completed
         self.proteus_pre_scan_done = False
@@ -117,6 +117,11 @@ class ScanMain(QObject):
         self.datetime_of_last_raw_data_emit = datetime.now()
         self.timedelta_between_raw_data_emits = timedelta(milliseconds=250)
 
+        # Keep track of the currently active scan dict / track
+        self._active_scan_dict = None
+        self._active_track_name = None
+
+
     ''' scan main functions: '''
 
     def close_scan_main(self):
@@ -137,10 +142,10 @@ class ScanMain(QObject):
             logging.error('could not stop TildaTritonScanControl, error is %s' % e, exc_info=True)
         try:
             if self.proteus_bridge is not None:
-                self.proteus_bridge.shutdown()
+                self.proteus_bridge.close()
                 self.proteus_bridge = None
         except Exception as e:
-            logging.error('could not shut down Proteus bridge, error is %s' % e, exc_info=True)
+            logging.error('could not close Proteus bridge, error is %s' % e, exc_info=True)
 
     def prepare_scan(self, scan_dict):  # callback_sig=None):
         """
@@ -158,6 +163,9 @@ class ScanMain(QObject):
         t = datetime.today()
         unix_time = time.mktime(t.timetuple())
         scan_dict['pipeInternals']['curVoltInd'] = 0
+        # Remember this scan dict so we can use it for Proteus logging, etc.
+        self._active_scan_dict = scan_dict
+        self._active_track_name = None
         scan_dict['isotopeData']['isotopeStartTime'] = t.strftime('%Y-%m-%d %H:%M:%S')
         xml_file_name = TiTs.createXmlFileOneIsotope(scan_dict)
         scan_dict['pipeInternals']['activeXmlFilePath'] = xml_file_name
@@ -547,7 +555,11 @@ class ScanMain(QObject):
         will start the measurement for one track.
         After starting the measurement, the FPGA runs on its own.
         """
+        # Remember which track is currently being measured
+        self._active_scan_dict = scan_dict
         act_track_name = 'track' + str(track_num)
+        self._active_track_name = act_track_name
+
         track_dict = scan_dict.get(act_track_name)
         iso = scan_dict.get('isotopeData', {}).get('isotope')
         logging.debug('---------------------------------------------')
@@ -565,6 +577,29 @@ class ScanMain(QObject):
         triton_dict_is_none = triton_dict_pre_scan is None or triton_dict_pre_scan == {}
         sql_dict_pre_scan = scan_dict[act_track_name].get('sql', {}).get('duringScan', {})
         sql_dict_is_none = sql_dict_pre_scan is None or sql_dict_pre_scan == {}
+        # start Proteus log for during scan if required
+        proteus_cfg = track_dict.get('proteus', {})
+        proteus_during = proteus_cfg.get('duringScan', {}) or {}
+
+        # Decide if there is anything to log
+        devs_cfg = proteus_during.get('devices', {}) or {}
+        instance = str(proteus_during.get('instance', '') or '').strip()
+        enabled = bool(proteus_during.get('enabled', True))
+
+        proteus_dict_is_none = (
+            not enabled
+            or not instance
+            or devs_cfg == {}
+        )
+
+        if not proteus_dict_is_none:
+            # This sets up a fresh ProteusLogger/Bridge for the duringScan phase
+            self.prepare_proteus_for_scan(
+                track_dict.get('proteus', {}),
+                'duringScan',
+                act_track_name,
+            )
+            self.start_proteus_log()
         if not triton_dict_is_none:
             self.start_triton_log()
         if not sql_dict_is_none:
@@ -688,6 +723,26 @@ class ScanMain(QObject):
         self.abort_triton_log()
         self.abort_sql_log()
         self.ppg_stop()
+        # --- Finish Proteus during-scan logging (if active) ---
+        try:
+            if (
+                self.proteus_logger is not None
+                and self._active_scan_dict is not None
+                and self._active_track_name is not None
+            ):
+                # Save whatever we have collected for duringScan
+                self.save_proteus_log(
+                    self._active_scan_dict,
+                    self._active_track_name,
+                    pre_during_post_scan_str='duringScan',
+                )
+        except Exception:
+            logging.exception(
+                "Error while saving Proteus duringScan log in stop_measurement"
+            )
+        finally:
+            # Make sure Proteus logging is stopped cleanly
+            self.abort_proteus_log()
         status = 'aborted' if Cfg._main_instance.abort_scan else 'completed'
         self.sql_stream.conclude_run_in_db(time.mktime(datetime.today().timetuple()), status)
         if read:
@@ -1291,22 +1346,25 @@ class ScanMain(QObject):
         creating the bridge, Proteus logging is disabled and the scan proceeds
         without waiting for Proteus.
         """
-        # Reset previous state first.
+        # Clean up any previous bridge/logger for safety.
+        if getattr(self, "proteus_bridge", None) is not None:
+            try:
+                self.proteus_bridge.close()
+            except Exception:
+                logging.exception("prepare_proteus_for_scan: error while closing previous Proteus bridge")
         self.proteus_bridge = None
         self.proteus_logger = None
 
         cfg = (proteus_scan_dict or {}).get(pre_post_scan_str, {}) or {}
         instance_addr = (cfg.get("instance") or "").strip()
         devices_cfg = (cfg.get("devices") or {}) or {}
+        enabled = bool(cfg.get("enabled", True))
 
-        if not instance_addr or not devices_cfg:
+        if (not enabled) or (not instance_addr) or (not devices_cfg):
             # Nothing configured for this phase -> do not use Proteus.
-            self.proteus_logger = None
-            self.proteus_bridge = None
-            self.proteus_logger_done = True  # optional; not used elsewhere
+            self.proteus_logger_done = True
             self.proteus_logger_running = False
             self.proteus_logger_timeout = False
-            self.proteus_logger_paused = False
             self.proteus_logger_save_on_timeout = False
             self.proteus_logger_timeout_time = None
             self.proteus_logger_pre_post_scan_str = pre_post_scan_str
@@ -1319,16 +1377,12 @@ class ScanMain(QObject):
             )
             return
 
-        # If we get here, we *want* Proteus logging.
         from Tilda.Driver.ProteusListener.ProteusLogger import ProteusLogger
         from Tilda.Driver.ProteusListener.ProteusBridge import TildaProteusBridge
 
         logger = ProteusLogger()
-        logger.setup_log(
-            {"devices": devices_cfg},
-            pre_post_scan_str,
-            track_name,
-        )
+        # Note: logger only needs the devices dict; instance is handled by the bridge.
+        logger.setup_log({"devices": devices_cfg}, pre_post_scan_str, track_name)
 
         try:
             bridge = TildaProteusBridge(logger=logger)
@@ -1339,9 +1393,6 @@ class ScanMain(QObject):
                 exc,
                 exc_info=True,
             )
-            # Do NOT leave a half-configured logger behind.
-            self.proteus_logger = None
-            self.proteus_bridge = None
             self.proteus_logger_done = True
             return
 
@@ -1350,15 +1401,19 @@ class ScanMain(QObject):
             bridge.configure_channels(devices_cfg)
         except Exception as exc:
             logging.warning(
-                "prepare_proteus_for_scan: error while connecting/configuring Proteus "
-                "for %s/%s (%s). Proteus logging will be disabled.",
+                "prepare_proteus_for_scan: error while connecting/configuring Proteus for "
+                "%s/%s (%s). Proteus logging will be disabled.",
                 pre_post_scan_str,
                 track_name,
                 exc,
                 exc_info=True,
             )
-            self.proteus_logger = None
-            self.proteus_bridge = None
+            try:
+                bridge.close()
+            except Exception:
+                logging.exception(
+                    "prepare_proteus_for_scan: error while closing Proteus bridge after failure"
+                )
             self.proteus_logger_done = True
             return
 
@@ -1383,19 +1438,31 @@ class ScanMain(QObject):
         )
 
     def start_proteus_log(self):
-        """
-        Start collecting values in ProteusLogger.
-        The bridge callbacks will feed values as long as they are active.
-        """
+        """Start collecting values in ProteusLogger."""
         if self.proteus_logger is not None:
             self.proteus_logger.start_log()
 
     def abort_proteus_log(self):
         """
-        Stop logging Proteus data, but keep everything that was collected so far.
+        Stop logging Proteus data and cleanly detach/close the Proteus bridge.
+
+        Important: we only close our local client; we do *not* shut down the
+        lab Proteus instance that is hosting the devices.
         """
         if self.proteus_logger is not None:
-            self.proteus_logger.stop_log()
+            try:
+                self.proteus_logger.stop_log()
+            except Exception:
+                logging.exception("abort_proteus_log: error while stopping ProteusLogger")
+
+        if getattr(self, "proteus_bridge", None) is not None:
+            try:
+                self.proteus_bridge.close()
+            except Exception:
+                logging.exception("abort_proteus_log: error while closing Proteus bridge")
+
+        self.proteus_logger = None
+        self.proteus_bridge = None
 
     def check_proteus_log_complete(
             self,
@@ -1410,29 +1477,23 @@ class ScanMain(QObject):
         If no Proteus logger is active, this is immediately True so that
         the scan does not wait for the timeout.
         """
-        # No logger configured -> nothing to wait for.
         if self.proteus_logger is None:
             return True
 
         completed = self.proteus_logger.logging_complete
 
         if completed or force_save_continue:
-            # Save whatever we have and stop.
             self.save_proteus_log(scan_dict, act_track_name, pre_post_scan_str)
             self.abort_proteus_log()
             return True
 
-        # Still waiting for data.
         return False
 
     def get_proteus_log_data(self):
-        """
-        Return the current log structure from the ProteusLogger.
-        """
+        """Return the current log structure from the ProteusLogger."""
         if self.proteus_logger is not None:
             return self.proteus_logger.log
-        else:
-            return {}
+        return {}
 
     def save_proteus_log(self, scan_dict, tr_name, pre_during_post_scan_str='preScan'):
         """
@@ -1446,6 +1507,12 @@ class ScanMain(QObject):
 
         if not file or not prot_dict:
             return
+
+        # For duringScan we behave like Triton: "continuous" → required = -1 in the XML
+        if pre_during_post_scan_str == 'duringScan':
+            for dev_dict in prot_dict.values():
+                for ch_dict in dev_dict.values():
+                    ch_dict['required'] = -1
 
         logging.info(
             'Proteus %s log complete, saving to: %s',

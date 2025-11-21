@@ -362,29 +362,41 @@ def save_sql_to_xml(file, tr_name, sql_dict, pre_during_post_scan_str='preScan')
 
 def save_proteus_to_xml(file, tr_name, proteus_dict, pre_during_post_scan_str='preScan'):
     """
-    Will save the proteus log to the given xml file.
+    will save the proteus log gotten from the proteus dict to the given xml file.
 
     :param file: str, path of the xml file
     :param tr_name: str, track name
-    :param proteus_dict: dict, structure as returned by ProteusLogger.log,
-                         e.g. {'Device': {'var': {'required': ..., 'data': [...], 'acquired': ...}, ...}, ...}
+    :param proteus_dict: dict,
+                         {'DummyDevice': {'random_variable': {'required': 5,
+                                                              'data': [.],
+                                                              'acquired': 5}}}
     :param pre_during_post_scan_str: str, preScan / duringScan / postScan
     :return: None
     """
-    if file:
-        if proteus_dict:
-            logging.info('proteus %s log complete, saving to: %s' %
-                         (pre_during_post_scan_str, file))
-            logging.debug('saving directly to xml file: ' + str(proteus_dict))
-            root = load_xml(file)
-            tracks = xmlFindOrCreateSubElement(root, 'tracks')
-            track = xmlFindOrCreateSubElement(tracks, tr_name)
-            track_header = xmlFindOrCreateSubElement(track, 'header')
-            proteus_ele = xmlFindOrCreateSubElement(track_header, 'proteus')
-            pre_ele = xmlFindOrCreateSubElement(proteus_ele, pre_during_post_scan_str)
-            xmlWriteDict(pre_ele, proteus_dict)
-            save_xml(root, file)
+    if not file or not proteus_dict:
+        return
 
+    logging.info('proteus %s log complete, saving to: %s',
+                 pre_during_post_scan_str, file)
+    logging.debug('saving directly to xml file: %s', proteus_dict)
+
+    root = load_xml(file)
+    tracks = xmlFindOrCreateSubElement(root, 'tracks')
+    track = xmlFindOrCreateSubElement(tracks, tr_name)
+    track_header = xmlFindOrCreateSubElement(track, 'header')
+    proteus_ele = xmlFindOrCreateSubElement(track_header, 'proteus')
+
+    # preScan / duringScan / postScan element
+    pre_ele = xmlFindOrCreateSubElement(proteus_ele, pre_during_post_scan_str)
+
+    # *** Important: drop any previous content (config, stale data, etc.) ***
+    for child in list(pre_ele):
+        pre_ele.remove(child)
+
+    # Now write ONLY the log dictionary (exactly like Triton does)
+    xmlWriteDict(pre_ele, proteus_dict)
+
+    save_xml(root, file)
 
 def evaluate_strings_in_dict(dict_to_convert):
     """
