@@ -20,7 +20,7 @@ from Tilda.Service.Scan.draftScanParameters import draft_scan_device
 import Tilda.Service.VoltageConversions.VoltageConversions as VCon
 
 
-METADATA_SYSTEMS = ['measureVoltPars', 'triton', 'sql']
+METADATA_SYSTEMS = ['measureVoltPars', 'triton', 'sql', 'proteus']
 
 
 METADATA_CHANNELS = dict(
@@ -526,11 +526,24 @@ class XMLImporter(SpecData):
         return None, None
 
     def get_metadata_measurement_pre_dur_post_track(self, scan_dict, pre_dur_post, track, mtype):
+        """Collect metadata measurements from DMM, Triton, SQL and Proteus for a
+        given pre/during/post phase and track.
+
+        Triton and Proteus are normalised to a flat
+        "dev.channel" / "dev.variable" style dictionary so that the
+        crawler can treat all metadata systems the same way.
+        """
         tr_dict = scan_dict[track]
         meta_dict = []
-        dmm = {'dmms.{}'.format(ch): ch_dict
-               for ch, ch_dict in tr_dict.get('measureVoltPars', {}).get(pre_dur_post, {}).get('dmms', {}).items()}
+
+        # DMMs: measureVoltPars -> pre_dur_post -> dmms
+        dmm = {
+            'dmms.{}'.format(ch): ch_dict
+            for ch, ch_dict in tr_dict.get('measureVoltPars', {}).get(pre_dur_post, {}).get('dmms', {}).items()
+        }
         meta_dict.append(dmm)
+
+        # Triton: either already flat (dev has 'data') or per-channel.
         _triton = tr_dict.get('triton', {}).get(pre_dur_post, {})
         triton = {}
         for dev, dev_dict in _triton.items():
@@ -540,7 +553,22 @@ class XMLImporter(SpecData):
                 for ch, ch_dict in dev_dict.items():
                     triton['{}.{}'.format(dev, ch)] = ch_dict
         meta_dict.append(triton)
+
+        # Proteus: same structure as Triton, but under 'proteus'.
+        _proteus = tr_dict.get('proteus', {}).get(pre_dur_post, {})
+        proteus = {}
+        for dev, dev_dict in _proteus.items():
+            if 'data' in list(dev_dict.keys()):
+                proteus[dev] = dev_dict
+            else:
+                for var, var_dict in dev_dict.items():
+                    proteus['{}.{}'.format(dev, var)] = var_dict
+        meta_dict.append(proteus)
+
+        # SQL: already flat; merge directly.
         meta_dict.append(tr_dict.get('sql', {}).get(pre_dur_post, {}))
+
+        # Merge all metadata systems, then locate the requested channel.
         meta_dict = TildaTools.merge_dicts(*meta_dict)
         dev_ch, data_key = self.find_metadata_key(meta_dict, mtype)
         if dev_ch is not None:
