@@ -80,6 +80,9 @@ class PreDurPostPlotter(QtWidgets.QVBoxLayout):
                 if dev_type == 'triton':
                     name, chan = dev_name.split(':')
                     plot_data = self.data_parent.data_dict[tr_name]['triton'][pre_dur_post_str][name][chan]['data']
+                elif dev_type == 'proteus':
+                    name, var = dev_name.split(':')
+                    plot_data = self.data_parent.data_dict[tr_name]['proteus'][pre_dur_post_str][name][var]['data']
                 elif dev_type == 'sql':
                     plot_data = self.data_parent.data_dict[tr_name]['sql'][pre_dur_post_str][dev_name]['data']
                 else:

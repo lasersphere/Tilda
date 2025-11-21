@@ -25,7 +25,7 @@ class ProteusLogger:
     be initialised when missing.
     """
 
-    def __init__(self, name: str = "ProteusLogger"):
+    def __init__(self, name: str = "ProteusLogger", live_data_callback=None):
         self.name = name
         self.devices = {}  # type: dict
         self.pre_dur_post_str = ""
@@ -33,6 +33,15 @@ class ProteusLogger:
         self.logging = False
         # If nothing is required, we consider logging immediately complete.
         self.logging_complete = True
+        # Optional callback used for live pre/during/post plotting
+        # (same format as TritonListener and DMM pre-scan).
+        self.live_data_callback = live_data_callback
+
+    def set_live_data_callback(self, callback):
+        """
+        Allow ScanMain to (re-)wire the live-plot callback after construction.
+        """
+        self.live_data_callback = callback
 
     # ------------------------------------------------------------------ #
     # Setup / control
@@ -106,6 +115,21 @@ class ProteusLogger:
         var_dict["data"].append(value)
         var_dict["acquired"] += 1
         self._update_complete_flag()
+
+        # Optional: feed live data into the "pre/during/post scan measurements" tab.
+        # Shape matches TritonListener: {track_name: {'proteus': {phase: log_dict}}}
+        if self.live_data_callback is not None and self.track_name:
+            try:
+                live_dict = {
+                    self.track_name: {
+                        'proteus': {
+                            self.pre_dur_post_str: self.log,  # property returns a deepcopy
+                        }
+                    }
+                }
+                self.live_data_callback(live_dict)
+            except Exception:
+                logger.exception("%s: error while executing live_data_callback", self.name)
 
     def _update_complete_flag(self) -> None:
         complete = True

@@ -1380,7 +1380,8 @@ class ScanMain(QObject):
         from Tilda.Driver.ProteusListener.ProteusLogger import ProteusLogger
         from Tilda.Driver.ProteusListener.ProteusBridge import TildaProteusBridge
 
-        logger = ProteusLogger()
+        # Pass in a callback so the logger can feed the live-plotting tab.
+        logger = ProteusLogger(live_data_callback=self.proteus_live_data_callback)
         # Note: logger only needs the devices dict; instance is handled by the bridge.
         logger.setup_log({"devices": devices_cfg}, pre_post_scan_str, track_name)
 
@@ -1494,6 +1495,26 @@ class ScanMain(QObject):
         if self.proteus_logger is not None:
             return self.proteus_logger.log
         return {}
+
+    def proteus_live_data_callback(self, live_dict):
+        """
+        Helper passed into ProteusLogger so Proteus values show up in the
+        'pre/during/post scan measurements' tab.
+
+        live_dict is expected to look like:
+            {track_name: {'proteus': {pre_dur_post_str: {...}}}}
+        """
+        logging.debug(
+            "emitting pre_post_meas_data_dict_callback from ProteusLogger, value is %s",
+            str(live_dict),
+        )
+        try:
+            # This signal/slot is wired to TRSLivePlotWindowUi.pre_post_meas_data_dict_callback
+            self.pre_post_meas_data_dict_callback.emit(live_dict)
+        except Exception:
+            logging.exception(
+                "proteus_live_data_callback: error while emitting pre_post_meas_data_dict_callback"
+            )
 
     def save_proteus_log(self, scan_dict, tr_name, pre_during_post_scan_str='preScan'):
         """

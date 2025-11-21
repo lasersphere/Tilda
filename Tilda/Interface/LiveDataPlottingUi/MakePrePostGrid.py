@@ -39,9 +39,31 @@ class PrePostGridWidget(QtWidgets.QWidget):
         self.triton_widget_dicts = {}  # dict to store the created widgets
         # each triton dev has channels therefore key is "dev_plus_channel_name" = dev + ':' + channel
         self.triton_dict = self.track_data_dict.get('triton', {}).get(pre_dur_post_str, {})
-        
+
         self.sql_widget_dicts = {}  # dict to store the created widgets
         self.sql_dict = self.track_data_dict.get('sql', {}).get(pre_dur_post_str, {})
+
+        self.proteus_widget_dicts = {}  # dict to store the created widgets
+        raw_proteus = self.track_data_dict.get('proteus', {}).get(pre_dur_post_str, {}) or {}
+
+        # Prefer live-data style (device names at top level) once it exists.
+        if isinstance(raw_proteus, dict):
+            # Drop pure config keys
+            dev_only = {
+                k: v
+                for k, v in raw_proteus.items()
+                if k not in ('instance', 'enabled', 'devices') and isinstance(v, dict)
+            }
+            if dev_only:
+                # Live data has arrived -> use that
+                self.proteus_dict = dev_only
+            elif isinstance(raw_proteus.get('devices'), dict):
+                # Only config present so far -> use devices sub-dict
+                self.proteus_dict = raw_proteus['devices']
+            else:
+                self.proteus_dict = {}
+        else:
+            self.proteus_dict = {}
 
         self.index = 0
 
@@ -81,11 +103,12 @@ class PrePostGridWidget(QtWidgets.QWidget):
         progressBar_dev.setValue(0)
         self.gridLayout_devices.addWidget(progressBar_dev, index, 3, 1, 1)
         self.update_dev(cb_plot_dev, label_name_dev, label_data_dev, progressBar_dev,
-                        device_name, device_dict, first_call=first_call)
+                        device_name, device_dict, device_type, first_call=first_call)
         return cb_plot_dev, label_name_dev, label_data_dev, progressBar_dev
 
     def update_dev(self, cb_plot_dev, label_name_dev, label_data_dev, progress_bar_dev,
-                   device_name, device_dict, first_call=False):
+                   device_name, device_dict, device_type=None, first_call=False):
+
         """
         update an existing device
         :param cb_plot_dev: qcheckbox, for plotting or not, currently not used
@@ -96,6 +119,27 @@ class PrePostGridWidget(QtWidgets.QWidget):
         :param device_dict: dict, contains the data/readings of a device
         :return:
         """
+        # For Proteus variables we sometimes only see the original config dict
+        # (required/acquired but empty data). In that case, pull the live data
+        # from the parent's data_dict, which is also used by the PreDurPostPlotter.
+        if device_type == 'proteus':
+            try:
+                dev_name, var_name = device_name.split(':', 1)
+                parent_dict = getattr(self.parent, 'data_dict', {})
+                track_dict = parent_dict.get(self.act_track, {})
+                prot_track = track_dict.get('proteus', {}).get(self.pre_dur_post_str, {})
+                live_dev_dict = prot_track.get(dev_name, {}).get(var_name, {})
+
+                if isinstance(live_dev_dict, dict):
+                    # Merge live values onto the config dict (keep required from config if present)
+                    merged = dict(device_dict)
+                    for key in ('data', 'acquired', 'required'):
+                        if key in live_dev_dict:
+                            merged[key] = live_dev_dict[key]
+                    device_dict = merged
+            except Exception:
+                # Non-fatal: if anything goes wrong, we just fall back to the original device_dict.
+                pass
         label_name_dev.setText(device_name)
         if device_dict.get('data') is not None:
             new_data = device_dict['data']
@@ -135,14 +179,16 @@ class PrePostGridWidget(QtWidgets.QWidget):
 
     def update_dev_from_dict(self, dev_widget_dict, dev_name, new_device_dict, first_call=False):
         """ simple wrapper for update dev """
-        self.update_dev(dev_widget_dict['plotCb'],
-                        dev_widget_dict['nameLabel'],
-                        dev_widget_dict['dataLabel'],
-                        dev_widget_dict['progressBar'],
-                        dev_name,
-                        new_device_dict,
-                        first_call=first_call
-                        )
+        self.update_dev(
+            dev_widget_dict['plotCb'],
+            dev_widget_dict['nameLabel'],
+            dev_widget_dict['dataLabel'],
+            dev_widget_dict['progressBar'],
+            dev_name,
+            new_device_dict,
+            dev_widget_dict.get('deviceType'),
+            first_call=first_call,
+        )
 
     def update_data(self, pre_dur_post_str, pre_post_meas_dict_this_track, first_call=False):
         """
@@ -180,15 +226,65 @@ class PrePostGridWidget(QtWidgets.QWidget):
                     check_box, name_label, data_label, progress_bar = self.setup_device_grid(
                         self.index, dev_plus_channel_name, self.triton_dict[dev][channel], 'triton',
                         first_call=first_call)
-                    self.triton_widget_dicts[dev_plus_channel_name] = {'plotCb': check_box,
-                                                                       'nameLabel': name_label,
-                                                                       'dataLabel': data_label,
-                                                                       'progressBar': progress_bar,
-                                                                       'index': deepcopy(self.index)
-                                                                       }
+                    self.triton_widget_dicts[dev_plus_channel_name] = {
+                        'plotCb': check_box,
+                        'nameLabel': name_label,
+                        'dataLabel': data_label,
+                        'progressBar': progress_bar,
+                        'index': deepcopy(self.index),
+                        'deviceType': 'triton',
+                    }
                     self.index += 1
-                self.update_dev_from_dict(self.triton_widget_dicts[dev_plus_channel_name], dev_plus_channel_name,
-                                          self.triton_dict[dev][channel], first_call=first_call)
+                self.update_dev_from_dict(
+                    self.triton_widget_dicts[dev_plus_channel_name],
+                    dev_plus_channel_name,
+                    self.triton_dict[dev][channel],
+                    first_call=first_call,
+                )
+
+        # Proteus: treat each variable like a "channel".
+        # During initial GUI build, the structure is the *config*:
+        #   {'preScan': {'instance': 'tcp://...', 'enabled': True, 'devices': {...}}, ...}
+        # During live updates from ProteusLogger, it's already just the devices dict:
+        #   {'DummyDevice': {'random_variable': {...}}, ...}
+        raw_proteus = self.track_data_dict.get('proteus', {}).get(pre_dur_post_str, {}) or {}
+
+        if isinstance(raw_proteus, dict) and 'devices' in raw_proteus and isinstance(raw_proteus['devices'], dict):
+            # Config-style dict: only use the 'devices' sub-dict for display
+            self.proteus_dict = raw_proteus['devices']
+        else:
+            # Already devices-only (live data path) or something unexpected
+            self.proteus_dict = raw_proteus if isinstance(raw_proteus, dict) else {}
+
+        for dev in sorted(self.proteus_dict.keys()):
+            dev_channels = self.proteus_dict.get(dev, {}) or {}
+            if not isinstance(dev_channels, dict):
+                continue  # defensive: ignore non-dict entries
+            for var in dev_channels:
+                dev_plus_var_name = dev + ':' + var
+                if dev_plus_var_name not in self.proteus_widget_dicts:
+                    check_box, name_label, data_label, progress_bar = self.setup_device_grid(
+                        self.index,
+                        dev_plus_var_name,
+                        dev_channels[var],
+                        'proteus',
+                        first_call=first_call,
+                    )
+                    self.proteus_widget_dicts[dev_plus_var_name] = {
+                        'plotCb': check_box,
+                        'nameLabel': name_label,
+                        'dataLabel': data_label,
+                        'progressBar': progress_bar,
+                        'index': deepcopy(self.index),
+                        'deviceType': 'proteus',
+                    }
+                    self.index += 1
+                self.update_dev_from_dict(
+                    self.proteus_widget_dicts[dev_plus_var_name],
+                    dev_plus_var_name,
+                    dev_channels[var],
+                    first_call=first_call,
+                )
 
         self.sql_dict = self.track_data_dict.get('sql', {}).get(pre_dur_post_str, {})
         for channel in sorted(self.sql_dict.keys()):
