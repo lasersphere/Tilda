@@ -148,23 +148,29 @@ def xmlAddCompleteTrack(rootEle, scanDict, data, track_name, datatype='scalerArr
     Add a complete Track to an lxml root element
     :param rootEle: lxml.etree.Element, Element of loaded File
     :param scanDict: dict, dictionary containing all scan parameters
-    :param data: array of data containing all scalers fpr this track
+    :param data: array of data containing all scalers for this track
     :param track_name: str, name of track
     :param datatype: str, name of data that will be written to the parent_ele_str
     :param parent_ele_str: str, name of the subelement taht will be created/found in the selected track
     :return: rootEle
     """
-    # seq_type = scanDict.get('isotopeData', {}).get('type', 'cs')
-    # pipeInternalsDict = scanDict['pipeInternals']
     nOfTrack = int(track_name[5:])
     trackDict = scanDict[track_name]
+
+    # For the header, do not include Proteus logging configuration.
+    # Proteus logging has its own dedicated section written by save_proteus_to_xml.
+    header_trackdict = dict(trackDict)
+    header_trackdict.pop('proteus', None)
+
     # write header
-    xmlWriteTrackDictToHeader(rootEle, nOfTrack, trackDict)
+    xmlWriteTrackDictToHeader(rootEle, nOfTrack, header_trackdict)
+
     # write explanation of data
     if data_explanation_str == '':
         data_explanation_str = get_data_explanation_str(scanDict, datatype)
     if data_explanation_str:
         xmlWriteToTrack(rootEle, nOfTrack, datatype + '_explanation', data_explanation_str, parent_ele_str)
+
     # write the data
     xmlWriteToTrack(rootEle, nOfTrack, datatype, data, parent_ele_str)
     return rootEle

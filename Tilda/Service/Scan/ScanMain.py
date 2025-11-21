@@ -1498,24 +1498,39 @@ class ScanMain(QObject):
     def save_proteus_log(self, scan_dict, tr_name, pre_during_post_scan_str='preScan'):
         """
         Save the currently logged Proteus data to the XML file defined in the scan parameters.
+        For 'required', we mirror the configuration from scan_dict['proteus']:
+          - required > 0 : minimum number of requested measurements
+          - required == -1 : continuous until scan end
         """
         from Tilda.PolliFit import TildaTools as TiTs
         import logging
 
         file = scan_dict['pipeInternals']['activeXmlFilePath']
-        prot_dict = self.get_proteus_log_data()
+        prot_dict = self.get_proteus_log_data()  # {'DummyDevice': {'random_variable': {...}}}
 
         if not file or not prot_dict:
             return
 
-        # For duringScan we behave like Triton: "continuous" → required = -1 in the XML
-        if pre_during_post_scan_str == 'duringScan':
-            for dev_dict in prot_dict.values():
-                for ch_dict in dev_dict.values():
-                    ch_dict['required'] = -1
+        # Get the original Proteus config for this track and phase
+        track_cfg = scan_dict.get(tr_name, {})
+        prot_cfg = track_cfg.get('proteus', {})
+        phase_cfg = prot_cfg.get(pre_during_post_scan_str, {})
+        dev_cfg = phase_cfg.get('devices', {})
+
+        # Synchronise "required" with what was configured
+        for dev_name, ch_dicts in prot_dict.items():
+            cfg_dev = dev_cfg.get(dev_name, {})
+            for ch_name, ch_data in ch_dicts.items():
+                cfg_chan = cfg_dev.get(ch_name, {})
+                cfg_required = cfg_chan.get('required', ch_data.get('required', -1))
+
+                # Semantics:
+                #  - -1  → continuous
+                #  - > 0 → minimum requested number of measurements
+                ch_data['required'] = int(cfg_required)
 
         logging.info(
-            'Proteus %s log complete, saving to: %s',
+            "Proteus %s log complete, saving to: %s",
             pre_during_post_scan_str, file
         )
 
