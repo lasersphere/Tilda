@@ -34,7 +34,7 @@ def main():
     # Parser argument
     parser = argparse.ArgumentParser(description='Start Tilda')
     parser.add_argument('--config_dir', '-d', type=check_config_dir)  # processed beforehand in __init__.py
-    parser.add_argument('--log_level', '-l', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], default='INFO')
+    parser.add_argument('--log_level', '-l', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], default='DEBUG')
     args = parser.parse_args()
 
     # setup logging

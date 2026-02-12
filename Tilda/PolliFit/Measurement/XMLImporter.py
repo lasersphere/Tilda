@@ -536,43 +536,59 @@ class XMLImporter(SpecData):
         tr_dict = scan_dict[track]
         meta_dict = []
 
-        # DMMs: measureVoltPars -> pre_dur_post -> dmms
+        # ----- DMMs: measureVoltPars -> pre_dur_post -> dmms -----
         dmm = {
-            'dmms.{}'.format(ch): ch_dict
-            for ch, ch_dict in tr_dict.get('measureVoltPars', {}).get(pre_dur_post, {}).get('dmms', {}).items()
+            f"dmms.{ch}": ch_dict
+            for ch, ch_dict in tr_dict.get("measureVoltPars", {})
+            .get(pre_dur_post, {})
+            .get("dmms", {})
+            .items()
         }
         meta_dict.append(dmm)
 
-        # Triton: either already flat (dev has 'data') or per-channel.
-        _triton = tr_dict.get('triton', {}).get(pre_dur_post, {})
+        # ----- Triton: either already flat (dev has 'data') or per-channel -----
+        _triton = tr_dict.get("triton", {}).get(pre_dur_post, {})
         triton = {}
         for dev, dev_dict in _triton.items():
-            if 'data' in list(dev_dict.keys()):
+            # Be robust: skip non-dicts
+            if not isinstance(dev_dict, dict):
+                continue
+            if "data" in dev_dict:
+                # Already a "device-level" dict with data
                 triton[dev] = dev_dict
             else:
+                # Per-channel/variable structure
                 for ch, ch_dict in dev_dict.items():
-                    triton['{}.{}'.format(dev, ch)] = ch_dict
+                    if not isinstance(ch_dict, dict):
+                        continue
+                    triton[f"{dev}.{ch}"] = ch_dict
         meta_dict.append(triton)
 
-        # Proteus: same structure as Triton, but under 'proteus'.
-        _proteus = tr_dict.get('proteus', {}).get(pre_dur_post, {})
-        proteus = {}
-        for dev, dev_dict in _proteus.items():
-            if 'data' in list(dev_dict.keys()):
-                proteus[dev] = dev_dict
-            else:
-                for var, var_dict in dev_dict.items():
-                    proteus['{}.{}'.format(dev, var)] = var_dict
-        meta_dict.append(proteus)
+        # ----- Proteus: config + devices; normalize like Triton -----
+        prot_root = tr_dict.get("proteus", {}).get(pre_dur_post, {})
+        # Newer structure: {'instance': 'tcp://', 'devices': {...}, 'enabled': bool}
+        if (
+                isinstance(prot_root, dict)
+                and "devices" in prot_root
+                and isinstance(prot_root["devices"], dict)
+        ):
+            _proteus = prot_root["devices"]
+        elif isinstance(prot_root, dict):
+            # Fallback for older "Triton-like" structure (no 'devices' wrapper)
+            _proteus = prot_root
+        else:
+            _proteus = {}
 
-        # SQL: already flat; merge directly.
-        meta_dict.append(tr_dict.get('sql', {}).get(pre_dur_post, {}))
+        # ----- SQL: already flat; merge directly -----
+        meta_dict.append(tr_dict.get("sql", {}).get(pre_dur_post, {}))
 
         # Merge all metadata systems, then locate the requested channel.
         meta_dict = TildaTools.merge_dicts(*meta_dict)
         dev_ch, data_key = self.find_metadata_key(meta_dict, mtype)
         if dev_ch is not None:
-            return meta_dict.get(dev_ch, {}).get(data_key, [])
+            entry = meta_dict.get(dev_ch, {})
+            if isinstance(entry, dict):
+                return entry.get(data_key, [])
         return []
 
     def get_metadata_measurement_track(self, scan_dict, track, mtype):

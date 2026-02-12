@@ -63,16 +63,27 @@ class TritonObject(object):
 
     def db_connect(self):
         if isinstance(self.sql_conf, dict):
+            # make a copy so we don't mutate the original config unexpectedly
+            conf = dict(self.sql_conf)
+
+            # force mysql-connector to use the pure Python implementation
+            # instead of the C extension (which is what’s crashing)
+            conf.setdefault('use_pure', True)
+
             try:
-                self.db = sql.connect(**self.sql_conf)
+                self.db = sql.connect(**conf)
                 self.dbCur = self.db.cursor()
             except Exception as e:
-                self.logger.error('could not connect to database %s, error is: %s' % (
-                    self.sql_conf.get('database', 'unknown'), e))
+                self.logger.error(
+                    'could not connect to database %s, error is: %s',
+                    conf.get('database', 'unknown'),
+                    e
+                )
                 self.db = None
                 self.dbCur = None
+
         elif isinstance(self.sql_conf, str) or self.sql_conf == {}:
-            # if the sql_conf is a string or an empty dict, it will be assumed taht no db connection is wanted
+            # if the sql_conf is a string or an empty dict, it will be assumed that no db connection is wanted
             # -> self.db is set to 'local' and all following db calls will be ignored.
             # helpful for developing Triton devs without a db but passing them the uri of another device directly.
             self.db = 'local'  # for testing without db
