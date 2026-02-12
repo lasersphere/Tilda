@@ -41,7 +41,7 @@ def xmlFindOrCreateSubElement(parentEle, tagString, value=''):
                 each = '(' + each + ') '
                 val_str += each
             val_str = '[' + val_str + ']'
-        elif value.dtype == np.int32:
+        elif np.issubdtype(value.dtype, np.integer):
             np.savetxt(temp_file, value, fmt='%d')
             with open(temp_file, 'r') as f:
                 ret = f.readlines()
@@ -50,6 +50,7 @@ def xmlFindOrCreateSubElement(parentEle, tagString, value=''):
             val_str = '[' + val_str + ']'
         else:
             val_str = str(value)
+
     else:
         # print('normal str conv')
         val_str = str(value)
