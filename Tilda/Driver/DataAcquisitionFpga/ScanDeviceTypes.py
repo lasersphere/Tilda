@@ -16,3 +16,4 @@ from enum import Enum, unique
 class ScanDeviceTypes(Enum):
     DAC = 0
     Triton = 1
+    Proteus = 2

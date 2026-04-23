@@ -33,6 +33,7 @@ from Tilda.Driver.ScanDevice.TritonScanDevControl import TritonScanDevControl
 from Tilda.Service.AnalysisAndDataHandling.AnalysisThread import AnalysisThread as AnalThr
 from Tilda.Driver.ScanDevice.BaseTildaScanDeviceControl import BaseTildaScanDeviceControl as BaseScDev
 from Tilda.Driver.ScanDevice.AD57X1ScanDevice import AD57X1ScanDev
+from Tilda.Driver.ScanDevice.ProteusScanDevControl import ProteusScanDevControl
 
 from Tilda.Application.Importer import InfluxConfig
 if InfluxConfig.useinfluxoversql:
@@ -409,6 +410,10 @@ class ScanMain(QObject):
                 self.scan_dev = self.triton_scan_controller
                 if sc_dev_n is not None:  # Tilda specific
                     self.scan_dev.subscribe_to_scan_dev(sc_dev_n)
+            elif sc_dev_class == 'Proteus':
+                self.scan_dev = ProteusScanDevControl()
+                if sc_dev_n is not None:
+                    self.scan_dev.return_scan_dev_info(dev_type, sc_dev_n)
             elif sc_dev_class == 'DAC':
                 self.scan_dev = AD57X1ScanDev()
 
@@ -426,6 +431,8 @@ class ScanMain(QObject):
             num_of_steps = scan_dict[act_track_name].get('nOfSteps', None)
             num_of_scans = scan_dict[act_track_name].get('nOfScans', None)
             invert_in_odd_scans = scan_dict[act_track_name].get('invertScan', None)
+            if hasattr(self.scan_dev, 'scan_dev_timeout'):
+                self.scan_dev.scan_dev_timeout = float(scan_dev_dict.get('timeout_s', 10.0))
             self.scan_dev.setup_scan_in_scan_dev(start, stepsize, num_of_steps, num_of_scans, invert_in_odd_scans)
 
     def set_scan_dev_to_pre_scan(self, scan_dict, act_track_name, pre_post_scan_str):

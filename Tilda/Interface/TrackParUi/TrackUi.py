@@ -395,6 +395,24 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         """ the scan dev was changed in the combobox -> fill available types and names """
         self.comboBox_scanDev_type.clear()
         self.buffer_pars['scanDevice']['devClass'] = scan_dev_class_str
+        is_proteus = scan_dev_class_str == 'Proteus'
+        self.comboBox_scanDev_type.setEditable(is_proteus)
+        self.comboBox_scanDev_name.setEditable(is_proteus)
+        if is_proteus:
+            self.comboBox_scanDev_name.setToolTip(
+                'Proteus target syntax:\n'
+                'Compact: tcp://host:7000::DeviceName::setpoint\n'
+                'Explicit: instance=tcp://host:7000;device=DeviceName;'
+                'variable=setpoint;readback=setpoint_readback;ready=ready'
+            )
+            if self.comboBox_scanDev_name.lineEdit() is not None:
+                self.comboBox_scanDev_name.lineEdit().setPlaceholderText(
+                    'instance=tcp://host:7000;device=MyDevice;variable=setpoint'
+                )
+        else:
+            self.comboBox_scanDev_name.setToolTip('')
+            if self.comboBox_scanDev_name.lineEdit() is not None:
+                self.comboBox_scanDev_name.lineEdit().setPlaceholderText('')
         self.comboBox_scanDevClass.blockSignals(True)
         self.comboBox_scanDevClass.setCurrentText(scan_dev_class_str)
         self.comboBox_scanDevClass.blockSignals(False)
@@ -410,6 +428,8 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
             st_type = self.stored_scan_dev_from_init['type']
             if st_type not in dev_types and st_type:
                 dev_types += [st_type]
+        if is_proteus and not dev_types:
+            dev_types = ['Proteus']
         self.comboBox_scanDev_type.addItems(dev_types)
         self.scan_type_changed(self.comboBox_scanDev_type.currentText())
 
@@ -429,6 +449,10 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
                 # the device might not be available
                 if self.stored_scan_dev_from_init['name'] not in dev_names:
                     dev_names += [self.stored_scan_dev_from_init['name']]
+        if self.comboBox_scanDev_name.isEditable() and not dev_names:
+            cur_name = self.buffer_pars['scanDevice'].get('name', '')
+            if cur_name:
+                dev_names += [cur_name]
         self.comboBox_scanDev_name.addItems(dev_names)
         self.scan_dev_name_changed(self.comboBox_scanDev_name.currentText())
 

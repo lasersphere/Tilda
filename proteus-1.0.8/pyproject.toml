@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=42.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "proteus"
+version = "1.0.8"
+authors = [
+  { name="Daniel Kabuß", email="daniel.kabuss@stud.tu-darmstadt.de" },
+]
+description = "Framework for data exchange and distributed experiment control."
+readme = "README.md"
+license = { file="LICENSE" }
+requires-python = ">=3.10"
+dependencies = [
+	"pyzmq >= 22.0.0",
+	"PyQt5 >= 5.13",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: European Union Public Licence 1.2 (EUPL 1.2)",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/lasersphere/proteus"
+"Bug Tracker" = "https://github.com/lasersphere/proteus/issues"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["proteus*"]

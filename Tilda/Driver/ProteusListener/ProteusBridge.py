@@ -4,6 +4,10 @@ import threading
 
 logger = logging.getLogger(__name__)
 
+from Tilda.Driver.ProteusListener.ProteusImport import ensure_proteus_on_path
+
+ensure_proteus_on_path()
+
 # Try to import proteus and the Connection helper
 try:
     import proteus  # type: ignore

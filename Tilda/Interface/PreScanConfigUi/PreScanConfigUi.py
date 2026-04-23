@@ -17,9 +17,12 @@ from typing import Dict, List
 import threading
 
 import Tilda.Application.Config as Cfg
+from Tilda.Driver.ProteusListener.ProteusImport import ensure_proteus_on_path
 from Tilda.Interface.PreScanConfigUi.Ui_PreScanMain import Ui_PreScanMainWin
 from Tilda.Interface.DmmUi.ChooseDmmWidget import ChooseDmmWidget
 from Tilda.Interface.DmmUi.DMMWidgets import Ni4071Widg
+
+ensure_proteus_on_path()
 
 try:
     import proteus
