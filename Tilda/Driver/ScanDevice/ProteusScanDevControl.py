@@ -85,9 +85,9 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, ProteusInstanceBase):
     """
 
     def __init__(self):
+        self._instance = None
         super(ProteusScanDevControl, self).__init__()
         self._cm_instance = None
-        self._instance = None
         self.instance_address = ""
         self.target_device = ""
         self.target_variable = "setpoint"
@@ -111,6 +111,14 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, ProteusInstanceBase):
         self.scan_status = "initialized"
         self._busy = False
         self.scan_dev_timeout = 10.0
+
+    @property
+    def instance(self):
+        return getattr(self, "_instance", None)
+
+    @instance.setter
+    def instance(self, value):
+        self._instance = value
 
     def available_scan_dev_types(self):
         return ["Proteus"]
@@ -288,7 +296,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, ProteusInstanceBase):
     def _ensure_instance(self):
         if not PROTEUS_AVAILABLE:
             raise RuntimeError("proteus package is not available")
-        if self._instance is None:
+        if getattr(self, "_instance", None) is None:
             self._cm_instance = proteus.Instance(**PROTEUS_INSTANCE_CONFIG)
             self._instance = self._cm_instance.__enter__()
         if self.instance_address:
