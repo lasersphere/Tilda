@@ -65,12 +65,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl):
     TILDA scan-device adapter for Proteus variables.
 
     The controller expects a writable Proteus variable that represents the
-    device setpoint. Optional metadata variables can be exposed on the same
-    Proteus device:
-
-    - ``unit_name``
-    - ``set_val_limit``
-    - ``step_size_limit``
+    device setpoint.
 
     Optional handshake variables can be configured through the explicit
     syntax:
@@ -143,17 +138,6 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl):
             "setValLimit": (-1.0 * 10 ** 30, 1.0 * 10 ** 30),
             "stepSizeLimit": (-1.0 * 10 ** 30, 1.0 * 10 ** 30),
         }
-
-        for prop_name, target_key, fallback in (
-            ("unit_name", "stepUnitName", info["stepUnitName"]),
-            ("set_val_limit", "setValLimit", info["setValLimit"]),
-            ("step_size_limit", "stepSizeLimit", info["stepSizeLimit"]),
-        ):
-            val = self._read_optional_property(prop_name)
-            if val is not None:
-                info[target_key] = val
-            else:
-                info[target_key] = fallback
 
         return info
 
@@ -351,24 +335,6 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl):
         self._set_ready_false_before_step()
         conn = self._ensure_connection()
         conn.set(value)
-
-    def _read_optional_property(self, prop_name: str):
-        if not self.target_device:
-            return None
-        try:
-            self._ensure_instance()
-            conn = Connection(self.instance, self.target_device, prop_name)
-            if not conn.is_connected:
-                return None
-            return conn.get()
-        except Exception:
-            logger.debug(
-                "ProteusScanDevControl: optional property %s not available on %s",
-                prop_name,
-                self.target_device,
-                exc_info=True,
-            )
-            return None
 
     def _read_property_now(self, prop_name: str):
         if not prop_name or not self.target_device:
