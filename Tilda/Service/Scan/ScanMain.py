@@ -105,6 +105,7 @@ class ScanMain(QObject):
         self.triton_scan_controller_name = 'TildaScanDevCtl'
         self.triton_scan_controller = None
         self.triton_scan_controller = TritonScanDevControl(self.triton_scan_controller_name)
+        self.proteus_scan_controller = ProteusScanDevControl()
         # connect to callback
         self.scan_dev_step_request_callback.connect(self.request_next_step_sc_dev_from_sc_main)
         # only initialise on scan?!
@@ -141,6 +142,11 @@ class ScanMain(QObject):
                 self.triton_scan_controller.deinit_scan_dev()
         except Exception as e:
             logging.error('could not stop TildaTritonScanControl, error is %s' % e, exc_info=True)
+        try:
+            if self.proteus_scan_controller is not None and self.proteus_scan_controller != self.scan_dev:
+                self.proteus_scan_controller.deinit_scan_dev()
+        except Exception as e:
+            logging.error('could not stop ProteusScanDevControl, error is %s' % e, exc_info=True)
         try:
             if self.proteus_bridge is not None:
                 self.proteus_bridge.close()
@@ -411,7 +417,7 @@ class ScanMain(QObject):
                 if sc_dev_n is not None:  # Tilda specific
                     self.scan_dev.subscribe_to_scan_dev(sc_dev_n)
             elif sc_dev_class == 'Proteus':
-                self.scan_dev = ProteusScanDevControl()
+                self.scan_dev = self.proteus_scan_controller
                 if sc_dev_n is not None:
                     self.scan_dev.return_scan_dev_info(dev_type, sc_dev_n)
             elif sc_dev_class == 'DAC':

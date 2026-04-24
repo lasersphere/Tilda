@@ -88,7 +88,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         "tcp://192.168.11.6:7000",
         "tcp://192.168.11.103:7000",
     ]
-    DISCOVERED_TARGET_MAP: Dict[str, str] = {}
+    DISCOVERED_TARGET_MAP: Dict[str, str] = {}   #For short GUI list elents
     DISCOVERED_TARGETS: List[str] = []
 
     def __init__(self):
@@ -102,7 +102,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         self.target_variable = "setpoint"
         self.readback_variable = ""
         self.ready_variable = ""
-        self.target_spec = ""
+        self.target_spec = ""           #raw string from GUI dropdown
 
         self._connection = None
         self._readback_connection = None
