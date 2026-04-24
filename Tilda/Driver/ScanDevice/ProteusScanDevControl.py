@@ -26,6 +26,7 @@ import time
 from typing import Any, Optional, Tuple
 
 import numpy as np
+from PyQt5.QtCore import QObject
 
 from Tilda.Driver.ProteusListener.ProteusImport import (
     ensure_proteus_on_path,
@@ -86,7 +87,8 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, ProteusInstanceBase):
 
     def __init__(self):
         self._instance = None
-        super(ProteusScanDevControl, self).__init__()
+        QObject.__init__(self)
+        self.possible_units = Units
         self._cm_instance = None
         self.instance_address = ""
         self.target_device = ""
@@ -111,6 +113,11 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, ProteusInstanceBase):
         self.scan_status = "initialized"
         self._busy = False
         self.scan_dev_timeout = 10.0
+        if PROTEUS_AVAILABLE:
+            try:
+                self._create_local_instance()
+            except Exception:
+                logger.exception("ProteusScanDevControl: failed to create local Proteus instance during init")
 
     @property
     def instance(self):
@@ -297,10 +304,14 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, ProteusInstanceBase):
         if not PROTEUS_AVAILABLE:
             raise RuntimeError("proteus package is not available")
         if getattr(self, "_instance", None) is None:
-            self._cm_instance = proteus.Instance(**PROTEUS_INSTANCE_CONFIG)
-            self._instance = self._cm_instance.__enter__()
+            self._create_local_instance()
         if self.instance_address:
             ensure_remote_instance_connected(self.instance, self.instance_address)
+
+    def _create_local_instance(self):
+        self._cm_instance = proteus.Instance(**PROTEUS_INSTANCE_CONFIG)
+        self._instance = self._cm_instance.__enter__()
+        return self._instance
 
     def connect(self, device_name: str, variable_name: str):
         if not PROTEUS_AVAILABLE or InstanceObject is None:
