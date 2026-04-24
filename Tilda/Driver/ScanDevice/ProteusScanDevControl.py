@@ -50,6 +50,8 @@ except Exception as exc:
     InstanceObject = None  # type: ignore
     PROTEUS_AVAILABLE = False
 
+ProteusInstanceBase = InstanceObject if PROTEUS_AVAILABLE else object
+
 try:
     from Tilda.Interface.PreScanConfigUi.PreScanConfigUi import PROTEUS_INSTANCE_CONFIG
 except Exception:
@@ -63,7 +65,7 @@ except Exception:
     }
 
 
-class ProteusScanDevControl(BaseTildaScanDeviceControl):
+class ProteusScanDevControl(BaseTildaScanDeviceControl, ProteusInstanceBase):
     """
     TILDA scan-device adapter for Proteus variables.
 
@@ -85,8 +87,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl):
     def __init__(self):
         super(ProteusScanDevControl, self).__init__()
         self._cm_instance = None
-        self.instance = None
-        self.instance_object = None
+        self._instance = None
         self.instance_address = ""
         self.target_device = ""
         self.target_variable = "setpoint"
@@ -230,8 +231,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl):
             except Exception:
                 logger.exception("ProteusScanDevControl: failed to close Proteus instance")
         self._cm_instance = None
-        self.instance = None
-        self.instance_object = None
+        self._instance = None
 
     def _parse_target_spec(self, spec: str) -> Tuple[str, str, str, str, str]:
         spec = (spec or "").strip()
@@ -289,18 +289,15 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl):
     def _ensure_instance(self):
         if not PROTEUS_AVAILABLE:
             raise RuntimeError("proteus package is not available")
-        if self.instance is None:
+        if self._instance is None:
             self._cm_instance = proteus.Instance(**PROTEUS_INSTANCE_CONFIG)
-            self.instance = self._cm_instance.__enter__()
-            self.instance_object = InstanceObject(self.instance)
+            self._instance = self._cm_instance.__enter__()
         if self.instance_address:
             ensure_remote_instance_connected(self.instance, self.instance_address)
 
     def _connect_property(self, variable_name: str):
         self._ensure_instance()
-        if self.instance_object is None:
-            raise RuntimeError("Proteus instance object is not available")
-        return self.instance_object.connect(self.target_device, variable_name)
+        return self.connect(self.target_device, variable_name)
 
     def _ensure_connection(self):
         if self._connection is not None and getattr(self._connection, "is_connected", False):
@@ -362,7 +359,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl):
 
     def _known_device_names(self):
         self._ensure_instance()
-        status = self.instance_object.known_devices()
+        status = self.known_devices()
         return sorted(status.keys())
 
     def _set_ready_false_before_step(self):
