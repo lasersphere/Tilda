@@ -108,7 +108,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
 
         self._known_targets: List[str] = []
         self._known_devices_cache: Dict[str, Dict[str, Dict[str, str]]] = {}
-        self._connected_instance_addresses = set()
+        self._selected_remote_address = ""
 
         self.sc_start = 0.0
         self.sc_stop = 0.0
@@ -249,7 +249,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         self._connection = None
         self._readback_connection = None
         self._ready_connection = None
-        self._connected_instance_addresses.clear()
+        self._selected_remote_address = ""
         self._known_targets = []
         self._known_devices_cache = {}
         if self._cm_instance is not None:
@@ -293,27 +293,40 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
                 result.append(address)
         return result
 
-    def _connect_to_remote_instances(self):
+    def _ensure_selected_remote_connected(self):
         self._ensure_instance()
-        for address in self._remote_instance_addresses():
-            if address in self._connected_instance_addresses:
-                continue
-            try:
-                ensure_remote_instance_connected(self.instance, address)
-                self._connected_instance_addresses.add(address)
-            except Exception:
-                logger.debug(
-                    "ProteusScanDevControl: failed to connect to remote instance %s",
-                    address,
-                    exc_info=True,
-                )
+        if not self.instance_address:
+            return
+        if self._selected_remote_address == self.instance_address:
+            return
+        ensure_remote_instance_connected(self.instance, self.instance_address)
+        self._selected_remote_address = self.instance_address
+
+    def _query_remote_instance_targets(self, address: str):
+        address = str(address or "").strip()
+        if not address:
+            return {}
+        with proteus.Instance(**PROTEUS_INSTANCE_CONFIG) as inst:
+            ensure_remote_instance_connected(inst, address)
+            helper = InstanceObject(inst)
+            status = helper.known_devices()
+        if not isinstance(status, dict):
+            return {}
+        return status
 
     def _refresh_known_targets(self):
-        self._connect_to_remote_instances()
-        known = self.known_devices()
         cache = {}
         targets = []
         for address in self._remote_instance_addresses():
+            try:
+                known = self._query_remote_instance_targets(address)
+            except Exception:
+                logger.debug(
+                    "ProteusScanDevControl: failed to query remote instance %s for discovery",
+                    address,
+                    exc_info=True,
+                )
+                continue
             address_targets = {}
             for dev_name, props in known.items():
                 if not isinstance(props, dict):
@@ -324,11 +337,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
             if address_targets:
                 cache[address] = address_targets
         if not cache:
-            for dev_name, props in known.items():
-                if not isinstance(props, dict):
-                    continue
-                for var_name in sorted(props.keys()):
-                    targets.append(f"{dev_name}::{var_name}")
+            logger.debug("ProteusScanDevControl: no remote Proteus targets discovered")
         self._known_devices_cache = cache
         self._known_targets = sorted(set(targets))
 
@@ -385,9 +394,33 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         self._connection = None
         self._readback_connection = None
         self._ready_connection = None
+        self._selected_remote_address = ""
 
     def _connect_property(self, variable_name: str):
-        self._connect_to_remote_instances()
+        if self.instance_address:
+            self._ensure_selected_remote_connected()
+            return self.connect(self.target_device, variable_name)
+
+        last_exc = None
+        for address in self._remote_instance_addresses():
+            try:
+                self.instance_address = address
+                self._selected_remote_address = ""
+                self._ensure_selected_remote_connected()
+                conn = self.connect(self.target_device, variable_name)
+                if conn.is_connected:
+                    return conn
+            except Exception as exc:
+                last_exc = exc
+                logger.debug(
+                    "ProteusScanDevControl: auto-connect attempt via %s failed for %s.%s",
+                    address,
+                    self.target_device,
+                    variable_name,
+                    exc_info=True,
+                )
+        if last_exc is not None:
+            raise last_exc
         return self.connect(self.target_device, variable_name)
 
     def _ensure_connection(self):
