@@ -86,7 +86,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
     # scan-device discovery in the Track UI dropdown.
     DISCOVERY_INSTANCE_ADDRESSES = [
         "tcp://192.168.11.6:7000",
-        "tcp://192.168.14.251:7000",
+        "tcp://192.168.11.103:7000",
     ]
 
     def __init__(self):
@@ -107,6 +107,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         self._ready_connection = None
 
         self._known_targets: List[str] = []
+        self._display_target_map: Dict[str, str] = {}
         self._known_devices_cache: Dict[str, Dict[str, Dict[str, str]]] = {}
         self._selected_remote_address = ""
 
@@ -251,6 +252,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         self._ready_connection = None
         self._selected_remote_address = ""
         self._known_targets = []
+        self._display_target_map = {}
         self._known_devices_cache = {}
         if self._cm_instance is not None:
             try:
@@ -275,6 +277,20 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
             self._cm_instance = proteus.Instance(**PROTEUS_INSTANCE_CONFIG)
             self._instance = self._cm_instance.__enter__()
         return self._instance
+
+    def _reset_local_instance(self):
+        if self._cm_instance is not None:
+            try:
+                self._cm_instance.__exit__(None, None, None)
+            except Exception:
+                logger.debug("ProteusScanDevControl: failed while resetting local Proteus instance", exc_info=True)
+        self._cm_instance = None
+        self._instance = None
+        self._connection = None
+        self._readback_connection = None
+        self._ready_connection = None
+        self._selected_remote_address = ""
+        self._create_local_instance()
 
     def _ensure_instance(self):
         if not PROTEUS_AVAILABLE:
@@ -317,6 +333,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
     def _refresh_known_targets(self):
         cache = {}
         targets = []
+        display_target_map = {}
         for address in self._remote_instance_addresses():
             try:
                 known = self._query_remote_instance_targets(address)
@@ -333,13 +350,17 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
                     continue
                 address_targets[dev_name] = dict(props)
                 for var_name in sorted(props.keys()):
-                    targets.append(f"{address}::{dev_name}::{var_name}")
+                    short_target = f"{dev_name}::{var_name}"
+                    full_target = f"{address}::{dev_name}::{var_name}"
+                    targets.append(short_target)
+                    display_target_map.setdefault(short_target, full_target)
             if address_targets:
                 cache[address] = address_targets
         if not cache:
             logger.debug("ProteusScanDevControl: no remote Proteus targets discovered")
         self._known_devices_cache = cache
         self._known_targets = sorted(set(targets))
+        self._display_target_map = display_target_map
 
     def _parse_target_spec(self, spec: str) -> Tuple[str, str, str, str, str]:
         spec = str(spec or "").strip()
@@ -382,9 +403,11 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         return parts[0], parts[1], parts[2], "", ""
 
     def _configure_target(self, target_spec: str):
+        target_spec = self._display_target_map.get(target_spec, target_spec)
         instance_address, device_name, variable_name, readback_variable, ready_variable = (
             self._parse_target_spec(target_spec)
         )
+        target_changed = target_spec != self.target_spec
         self.target_spec = target_spec
         self.instance_address = instance_address
         self.target_device = device_name
@@ -395,6 +418,8 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         self._readback_connection = None
         self._ready_connection = None
         self._selected_remote_address = ""
+        if target_changed and PROTEUS_AVAILABLE:
+            self._reset_local_instance()
 
     def _connect_property(self, variable_name: str):
         if self.instance_address:
