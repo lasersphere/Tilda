@@ -27,7 +27,6 @@ import time
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
-from PyQt5.QtCore import QObject
 
 from Tilda.Driver.ProteusListener.ProteusImport import (
     ensure_proteus_on_path,
@@ -63,7 +62,19 @@ except Exception:
     }
 
 
-class ProteusScanDevControl(BaseTildaScanDeviceControl, InstanceObject):
+class DeferredInstanceObject(InstanceObject):
+    """
+    InstanceObject variant that can be constructed before a Proteus Instance
+    exists. QObject's cooperative init path reaches this class with no
+    arguments, so we must tolerate that case.
+    """
+
+    def __init__(self, instance=None, **kwargs):
+        self._instance = instance
+        super(InstanceObject, self).__init__(**kwargs)
+
+
+class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
     """
     TILDA scan-device adapter for Proteus variables.
 
@@ -79,8 +90,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, InstanceObject):
     ]
 
     def __init__(self):
-        QObject.__init__(self)
-        self.possible_units = Units
+        BaseTildaScanDeviceControl.__init__(self)
 
         self._cm_instance = None
         self._instance = None
