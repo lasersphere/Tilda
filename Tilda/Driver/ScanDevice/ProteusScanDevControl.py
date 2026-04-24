@@ -128,7 +128,6 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
 
         if PROTEUS_AVAILABLE:
             self._create_local_instance()
-            self._ensure_discovery_instances_connected()
 
     @property
     def instance(self):
@@ -313,6 +312,35 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
                     address,
                     exc_info=True,
                 )
+
+    def _query_remote_instance_targets(self, address: str):
+        address = str(address or "").strip()
+        if not address:
+            return {}
+
+        self._ensure_instance()
+        if address not in self._connected_instance_addresses and address not in self._failed_instance_addresses:
+            try:
+                ensure_remote_instance_connected(self.instance, address)
+                self._connected_instance_addresses.add(address)
+            except Exception:
+                self._failed_instance_addresses.add(address)
+                raise
+
+        known_instances = getattr(self.instance, "_known_instances", {})
+        remote_ref = known_instances.get(address)
+        if remote_ref is None:
+            return {}
+        try:
+            status = remote_ref._status_json()
+        except Exception:
+            logger.debug(
+                "ProteusScanDevControl: failed to read status json from %s",
+                address,
+                exc_info=True,
+            )
+            return {}
+        return status if isinstance(status, dict) else {}
 
     def _refresh_known_targets(self):
         cache = {}
