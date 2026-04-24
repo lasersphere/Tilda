@@ -553,7 +553,14 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         if not prop_name or not self.target_device:
             return None
         try:
-            conn = self._connect_property(prop_name)
+            if prop_name == self.target_variable:
+                conn = self._ensure_connection()
+            elif prop_name == self.readback_variable:
+                conn = self._ensure_readback_connection()
+            elif prop_name == self.ready_variable:
+                conn = self._ensure_ready_connection()
+            else:
+                conn = self._connect_property(prop_name)
             if not conn.is_connected:
                 return None
             return conn.get()

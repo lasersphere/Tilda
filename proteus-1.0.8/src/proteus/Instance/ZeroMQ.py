@@ -419,6 +419,7 @@ class Instance(ZeroMQInstanceReference, Instance):
 				self._publish_socket.send_json(message)
 
 	def _send_command(self, target_address: str, message: RawMessage) -> RawMessage:
+		reusable_socket = False
 		try:
 			socket = self._command_senders.get_nowait()
 		except Empty:
@@ -442,12 +443,13 @@ class Instance(ZeroMQInstanceReference, Instance):
 					raise ProteusError(f"Unable to receive a reply to {message.content!s} from {target_address!s}") from ex
 				except IndexError as ex:
 					raise ProteusError(f"Incomplete reply to {message.content!s} from {target_address!s}") from ex
+			reusable_socket = True
 			return reply
 		except ZMQError as ex:
 			# This happens if the address is nonsense
 			raise DeviceNotFound from ex
 		finally:
-			if self._is_running:
+			if self._is_running and reusable_socket:
 				self._command_senders.put(socket)
 			else:
 				socket.close()
