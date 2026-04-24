@@ -120,8 +120,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, ProteusInstanceBase):
             return []
         names = []
         try:
-            for dev_name in self._known_device_names():
-                names.append(dev_name)
+            names.extend(self._known_device_targets())
         except Exception:
             logger.debug("ProteusScanDevControl: device discovery failed", exc_info=True)
         if self.target_spec and self.target_spec not in names:
@@ -295,6 +294,18 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, ProteusInstanceBase):
         if self.instance_address:
             ensure_remote_instance_connected(self.instance, self.instance_address)
 
+    def connect(self, device_name: str, variable_name: str):
+        if not PROTEUS_AVAILABLE or InstanceObject is None:
+            raise RuntimeError("proteus package is not available")
+        self._ensure_instance()
+        return InstanceObject.connect(self, device_name, variable_name)
+
+    def known_devices(self):
+        if not PROTEUS_AVAILABLE or InstanceObject is None:
+            raise RuntimeError("proteus package is not available")
+        self._ensure_instance()
+        return InstanceObject.known_devices(self)
+
     def _connect_property(self, variable_name: str):
         self._ensure_instance()
         return self.connect(self.target_device, variable_name)
@@ -361,6 +372,25 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, ProteusInstanceBase):
         self._ensure_instance()
         status = self.known_devices()
         return sorted(status.keys())
+
+    def _known_device_targets(self):
+        self._ensure_instance()
+        status = self.known_devices()
+        targets = []
+        for dev_name in sorted(status.keys()):
+            dev_props = status.get(dev_name, {})
+            if isinstance(dev_props, dict) and dev_props:
+                for var_name in sorted(dev_props.keys()):
+                    if self.instance_address:
+                        targets.append(f"{self.instance_address}::{dev_name}::{var_name}")
+                    else:
+                        targets.append(f"{dev_name}::{var_name}")
+            else:
+                if self.instance_address:
+                    targets.append(f"{self.instance_address}::{dev_name}")
+                else:
+                    targets.append(dev_name)
+        return targets
 
     def _set_ready_false_before_step(self):
         if not self.ready_variable:
