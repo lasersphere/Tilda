@@ -1,8 +1,9 @@
 """
 Proteus-backed external scan device controller for TILDA.
 
-This controller keeps the scan stepping logic on the TILDA side and writes
-the current setpoint to a writable Proteus variable on demand.
+This controller owns its own local Proteus instance, discovers devices on a
+configured list of remote Proteus instances, and drives a selected writable
+Proteus variable step-by-step for scans.
 
 Supported target syntaxes:
 
@@ -13,7 +14,7 @@ Compact:
     tcp://host:6000::DeviceName::VariableName
 
 Explicit:
-    instance=tcp://host:6000;device=MyDevice;variable=setpoint
+    instance=tcp://host:7000;device=MyDevice;variable=set_val
     instance=tcp://host:7000;device=MyDevice;variable=set_val;
     readback=scan_var;ready=ready
 
@@ -23,7 +24,7 @@ If the variable name is omitted, ``setpoint`` is used.
 import logging
 import math
 import time
-from typing import Any, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 from PyQt5.QtCore import QObject
@@ -41,17 +42,13 @@ ensure_proteus_on_path()
 
 try:
     import proteus  # type: ignore
-    from proteus.Connection import Connection  # type: ignore
     from proteus.InstanceObject import InstanceObject  # type: ignore
     PROTEUS_AVAILABLE = True
 except Exception as exc:
     logger.info("ProteusScanDevControl: proteus import failed (%s)", exc)
     proteus = None  # type: ignore
-    Connection = None  # type: ignore
-    InstanceObject = None  # type: ignore
+    InstanceObject = object  # type: ignore
     PROTEUS_AVAILABLE = False
-
-ProteusInstanceBase = InstanceObject if PROTEUS_AVAILABLE else object
 
 try:
     from Tilda.Interface.PreScanConfigUi.PreScanConfigUi import PROTEUS_INSTANCE_CONFIG
@@ -66,39 +63,42 @@ except Exception:
     }
 
 
-class ProteusScanDevControl(BaseTildaScanDeviceControl, ProteusInstanceBase):
+class ProteusScanDevControl(BaseTildaScanDeviceControl, InstanceObject):
     """
     TILDA scan-device adapter for Proteus variables.
 
-    The controller expects a writable Proteus variable that represents the
-    device setpoint.
-
-    Optional handshake variables can be configured through the explicit
-    syntax:
-
-    - ``readback``: variable that should match the requested setpoint
-    - ``ready``: boolean variable that should become ``True`` once the
-      device has settled
-
-    The configured scan-device target itself must be the writable setpoint
-    variable. Read-only measurement channels such as ``scan_var`` belong
-    into ``readback=...`` instead.
+    The controller owns a local Proteus client instance and discovers remote
+    devices/variables from a configured list of remote instance addresses.
     """
 
+    # Edit this list to define which remote Proteus instances are probed for
+    # scan-device discovery in the Track UI dropdown.
+    DISCOVERY_INSTANCE_ADDRESSES = [
+        "tcp://192.168.11.6:7000",
+        "tcp://192.168.14.251:7000",
+    ]
+
     def __init__(self):
-        self._instance = None
         QObject.__init__(self)
         self.possible_units = Units
+
         self._cm_instance = None
+        self._instance = None
+
         self.instance_address = ""
         self.target_device = ""
         self.target_variable = "setpoint"
         self.readback_variable = ""
         self.ready_variable = ""
         self.target_spec = ""
+
         self._connection = None
         self._readback_connection = None
         self._ready_connection = None
+
+        self._known_targets: List[str] = []
+        self._known_devices_cache: Dict[str, Dict[str, Dict[str, str]]] = {}
+        self._connected_instance_addresses = set()
 
         self.sc_start = 0.0
         self.sc_stop = 0.0
@@ -113,15 +113,13 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, ProteusInstanceBase):
         self.scan_status = "initialized"
         self._busy = False
         self.scan_dev_timeout = 10.0
+
         if PROTEUS_AVAILABLE:
-            try:
-                self._create_local_instance()
-            except Exception:
-                logger.exception("ProteusScanDevControl: failed to create local Proteus instance during init")
+            self._create_local_instance()
 
     @property
     def instance(self):
-        return getattr(self, "_instance", None)
+        return self._instance
 
     @instance.setter
     def instance(self, value):
@@ -133,11 +131,14 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, ProteusInstanceBase):
     def available_scan_dev_names_by_type(self, dev_type):
         if dev_type != "Proteus":
             return []
+
         names = []
         try:
-            names.extend(self._known_device_targets())
+            self._refresh_known_targets()
+            names.extend(self._known_targets)
         except Exception:
             logger.debug("ProteusScanDevControl: device discovery failed", exc_info=True)
+
         if self.target_spec and self.target_spec not in names:
             names.append(self.target_spec)
         return names
@@ -146,7 +147,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, ProteusInstanceBase):
         if dev_name:
             self._configure_target(dev_name)
 
-        info = {
+        return {
             "name": self.target_spec or dev_name or "ProteusDevice",
             "type": "Proteus",
             "devClass": "Proteus",
@@ -160,8 +161,6 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, ProteusInstanceBase):
             "setValLimit": (-1.0 * 10 ** 30, 1.0 * 10 ** 30),
             "stepSizeLimit": (-1.0 * 10 ** 30, 1.0 * 10 ** 30),
         }
-
-        return info
 
     def setup_scan_in_scan_dev(self, start, stepsize, num_of_steps, num_of_scans, invert_in_odd_scans):
         self.sc_start = float(start)
@@ -179,6 +178,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, ProteusInstanceBase):
         self.sc_l_cur_scan = 0
         self.sc_l_perc_compl = 0.0
         self.scan_status = "setupForScan"
+
         self._ensure_connection()
 
         self.scan_dev_has_setup_these_pars_pyqtsig.emit({
@@ -239,6 +239,9 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, ProteusInstanceBase):
         self._connection = None
         self._readback_connection = None
         self._ready_connection = None
+        self._connected_instance_addresses.clear()
+        self._known_targets = []
+        self._known_devices_cache = {}
         if self._cm_instance is not None:
             try:
                 self._cm_instance.__exit__(None, None, None)
@@ -247,8 +250,80 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, ProteusInstanceBase):
         self._cm_instance = None
         self._instance = None
 
+    def connect(self, device_name: str, variable_name: str):
+        self._ensure_instance()
+        return InstanceObject.connect(self, device_name, variable_name)
+
+    def known_devices(self):
+        self._ensure_instance()
+        return InstanceObject.known_devices(self)
+
+    def _create_local_instance(self):
+        if not PROTEUS_AVAILABLE:
+            raise RuntimeError("proteus package is not available")
+        if self._instance is None:
+            self._cm_instance = proteus.Instance(**PROTEUS_INSTANCE_CONFIG)
+            self._instance = self._cm_instance.__enter__()
+        return self._instance
+
+    def _ensure_instance(self):
+        if not PROTEUS_AVAILABLE:
+            raise RuntimeError("proteus package is not available")
+        if self._instance is None:
+            self._create_local_instance()
+
+    def _remote_instance_addresses(self):
+        addresses = list(self.DISCOVERY_INSTANCE_ADDRESSES)
+        if self.instance_address and self.instance_address not in addresses:
+            addresses.append(self.instance_address)
+        result = []
+        for address in addresses:
+            address = str(address or "").strip()
+            if address and address not in result:
+                result.append(address)
+        return result
+
+    def _connect_to_remote_instances(self):
+        self._ensure_instance()
+        for address in self._remote_instance_addresses():
+            if address in self._connected_instance_addresses:
+                continue
+            try:
+                ensure_remote_instance_connected(self.instance, address)
+                self._connected_instance_addresses.add(address)
+            except Exception:
+                logger.debug(
+                    "ProteusScanDevControl: failed to connect to remote instance %s",
+                    address,
+                    exc_info=True,
+                )
+
+    def _refresh_known_targets(self):
+        self._connect_to_remote_instances()
+        known = self.known_devices()
+        cache = {}
+        targets = []
+        for address in self._remote_instance_addresses():
+            address_targets = {}
+            for dev_name, props in known.items():
+                if not isinstance(props, dict):
+                    continue
+                address_targets[dev_name] = dict(props)
+                for var_name in sorted(props.keys()):
+                    targets.append(f"{address}::{dev_name}::{var_name}")
+            if address_targets:
+                cache[address] = address_targets
+        if not cache:
+            for dev_name, props in known.items():
+                if not isinstance(props, dict):
+                    continue
+                for var_name in sorted(props.keys()):
+                    targets.append(f"{dev_name}::{var_name}")
+        self._known_devices_cache = cache
+        self._known_targets = sorted(set(targets))
+
     def _parse_target_spec(self, spec: str) -> Tuple[str, str, str, str, str]:
-        spec = (spec or "").strip()
+        spec = str(spec or "").strip()
         if "=" in spec:
             entries = {}
             for item in spec.split(";"):
@@ -288,8 +363,9 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, ProteusInstanceBase):
         return parts[0], parts[1], parts[2], "", ""
 
     def _configure_target(self, target_spec: str):
-        instance_address, device_name, variable_name, readback_variable, ready_variable = \
+        instance_address, device_name, variable_name, readback_variable, ready_variable = (
             self._parse_target_spec(target_spec)
+        )
         self.target_spec = target_spec
         self.instance_address = instance_address
         self.target_device = device_name
@@ -300,33 +376,8 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, ProteusInstanceBase):
         self._readback_connection = None
         self._ready_connection = None
 
-    def _ensure_instance(self):
-        if not PROTEUS_AVAILABLE:
-            raise RuntimeError("proteus package is not available")
-        if getattr(self, "_instance", None) is None:
-            self._create_local_instance()
-        if self.instance_address:
-            ensure_remote_instance_connected(self.instance, self.instance_address)
-
-    def _create_local_instance(self):
-        self._cm_instance = proteus.Instance(**PROTEUS_INSTANCE_CONFIG)
-        self._instance = self._cm_instance.__enter__()
-        return self._instance
-
-    def connect(self, device_name: str, variable_name: str):
-        if not PROTEUS_AVAILABLE or InstanceObject is None:
-            raise RuntimeError("proteus package is not available")
-        self._ensure_instance()
-        return InstanceObject.connect(self, device_name, variable_name)
-
-    def known_devices(self):
-        if not PROTEUS_AVAILABLE or InstanceObject is None:
-            raise RuntimeError("proteus package is not available")
-        self._ensure_instance()
-        return InstanceObject.known_devices(self)
-
     def _connect_property(self, variable_name: str):
-        self._ensure_instance()
+        self._connect_to_remote_instances()
         return self.connect(self.target_device, variable_name)
 
     def _ensure_connection(self):
@@ -336,7 +387,6 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, ProteusInstanceBase):
         if not self.target_device:
             raise RuntimeError("Proteus target device is not configured")
 
-        self._ensure_instance()
         deadline = time.perf_counter() + 2.0
         last_exc = None
         while time.perf_counter() <= deadline:
@@ -347,7 +397,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, ProteusInstanceBase):
                     logger.info(
                         "ProteusScanDevControl: connected to %s on %s",
                         f"{self.target_device}.{self.target_variable}",
-                        self.instance_address or "<local>",
+                        self.instance_address or "<auto-discovery>",
                     )
                     return self._connection
                 last_exc = RuntimeError(
@@ -387,44 +437,6 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, ProteusInstanceBase):
             return self._ready_connection
         return None
 
-    def _known_device_names(self):
-        self._ensure_instance()
-        status = self.known_devices()
-        return sorted(status.keys())
-
-    def _known_device_targets(self):
-        self._ensure_instance()
-        status = self.known_devices()
-        targets = []
-        for dev_name in sorted(status.keys()):
-            dev_props = status.get(dev_name, {})
-            if isinstance(dev_props, dict) and dev_props:
-                for var_name in sorted(dev_props.keys()):
-                    if self.instance_address:
-                        targets.append(f"{self.instance_address}::{dev_name}::{var_name}")
-                    else:
-                        targets.append(f"{dev_name}::{var_name}")
-            else:
-                if self.instance_address:
-                    targets.append(f"{self.instance_address}::{dev_name}")
-                else:
-                    targets.append(dev_name)
-        return targets
-
-    def _set_ready_false_before_step(self):
-        if not self.ready_variable:
-            return
-        try:
-            conn = self._ensure_ready_connection()
-            if conn is not None:
-                conn.set(False)
-        except Exception:
-            logger.debug(
-                "ProteusScanDevControl: failed to clear ready=%s before sending step",
-                self.ready_variable,
-                exc_info=True,
-            )
-
     def _write_setpoint(self, value):
         self._set_ready_false_before_step()
         last_exc = None
@@ -445,6 +457,20 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, ProteusInstanceBase):
                 self._connection = None
                 time.sleep(0.1)
         raise RuntimeError(self._build_connection_error(last_exc, during_write=True)) from last_exc
+
+    def _set_ready_false_before_step(self):
+        if not self.ready_variable:
+            return
+        try:
+            conn = self._ensure_ready_connection()
+            if conn is not None:
+                conn.set(False)
+        except Exception:
+            logger.debug(
+                "ProteusScanDevControl: failed to clear ready=%s before sending step",
+                self.ready_variable,
+                exc_info=True,
+            )
 
     def _read_property_now(self, prop_name: str):
         if not prop_name or not self.target_device:
@@ -504,21 +530,11 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, ProteusInstanceBase):
 
     def _build_connection_error(self, exc: Exception, during_write: bool = False) -> str:
         action = "write to" if during_write else "connect to"
-        msg = (
+        return (
             f"Proteus scan device could not {action} "
-            f"{self.target_device}.{self.target_variable} at {self.instance_address or '<local>'}: {exc}"
+            f"{self.target_device}.{self.target_variable} at "
+            f"{self.instance_address or '<auto-discovery>'}: {exc}"
         )
-        msg += (
-            ". The scan-device target must be the writable setpoint variable. "
-            "If your Proteus device exposes a separate readout such as 'scan_var', "
-            "configure the scan device with explicit syntax like "
-            "'instance=tcp://host:7000;device=Benchmark_Dev;variable=<writable_setpoint>;readback=scan_var'."
-        )
-        if self.readback_variable:
-            msg += f" Current readback is '{self.readback_variable}'."
-        if self.ready_variable:
-            msg += f" Current ready variable is '{self.ready_variable}'."
-        return msg
 
     def _calc_next_position(self) -> Tuple[int, int]:
         if self.sc_num_of_steps <= 0 or self.sc_num_of_scans <= 0:
