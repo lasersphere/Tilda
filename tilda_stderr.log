@@ -1,0 +1,48 @@
+Traceback (most recent call last):
+  File "C:\Users\Alive\PycharmProjects\Tilda\Tilda\proteus-1.0.8\src\proteus\Instance\ZeroMQ.py", line 439, in _send_command
+    replies = socket.recv_multipart(flags=0)
+  File "C:\Users\Alive\PycharmProjects\Tilda\Tilda\.venv\Lib\site-packages\zmq\sugar\socket.py", line 799, in recv_multipart
+    parts = [self.recv(flags, copy=copy, track=track)]
+             ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "zmq/backend/cython/_zmq.py", line 1218, in zmq.backend.cython._zmq.Socket.recv
+    def recv(self, flags=0, copy: bint = True, track: bint = False):
+    ^^^^^^^
+  File "zmq/backend/cython/_zmq.py", line 1253, in zmq.backend.cython._zmq.Socket.recv
+    return _recv_copy(self.handle, flags)
+    
+  File "zmq/backend/cython/_zmq.py", line 1413, in zmq.backend.cython._zmq._recv_copy
+    raise
+    
+  File "zmq/backend/cython/_zmq.py", line 1408, in zmq.backend.cython._zmq._recv_copy
+    _check_rc(rc)
+    
+  File "zmq/backend/cython/_zmq.py", line 186, in zmq.backend.cython._zmq._check_rc
+    raise Again(errno)
+    
+zmq.error.Again: Resource temporarily unavailable
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Alive\PycharmProjects\Tilda\Tilda\Tilda\Service\Scan\ScanMain.py", line 467, in request_next_step_sc_dev_from_sc_main
+    self.scan_dev.request_next_step()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Alive\PycharmProjects\Tilda\Tilda\Tilda\Driver\ScanDevice\ProteusScanDevControl.py", line 182, in request_next_step
+    self._write_setpoint(value)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\Alive\PycharmProjects\Tilda\Tilda\Tilda\Driver\ScanDevice\ProteusScanDevControl.py", line 336, in _write_setpoint
+    conn = self._ensure_connection()
+  File "C:\Users\Alive\PycharmProjects\Tilda\Tilda\Tilda\Driver\ScanDevice\ProteusScanDevControl.py", line 295, in _ensure_connection
+    self._ensure_instance()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Alive\PycharmProjects\Tilda\Tilda\Tilda\Driver\ScanDevice\ProteusScanDevControl.py", line 289, in _ensure_instance
+    self.instance.add_instance(self.instance_address)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Alive\PycharmProjects\Tilda\Tilda\proteus-1.0.8\src\proteus\Instance\ZeroMQ.py", line 477, in add_instance
+    self.add_instances([new_address])
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\Users\Alive\PycharmProjects\Tilda\Tilda\proteus-1.0.8\src\proteus\Instance\ZeroMQ.py", line 485, in add_instances
+    reply = self._send_command(address, message)
+  File "C:\Users\Alive\PycharmProjects\Tilda\Tilda\proteus-1.0.8\src\proteus\Instance\ZeroMQ.py", line 442, in _send_command
+    raise ProteusError(f"Unable to receive a reply to {message.content!s} from {target_address!s}") from ex
+proteus.Utility.ProteusError: Unable to receive a reply to {'levelindex': 0, 'value': ['tcp://192.168.14.251:6466', 'tcp://192.168.14.251:7000'], 'pub_port': 6301, 'status': {}, 'nomen': '', 'property': '', 'command': 'JOIN', 'timestamp': '2026-04-24T12:05:04.278243Z', 'timezone': 'UTC'} from tcp://192.168.14.251:6195

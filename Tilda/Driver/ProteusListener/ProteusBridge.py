@@ -4,7 +4,10 @@ import threading
 
 logger = logging.getLogger(__name__)
 
-from Tilda.Driver.ProteusListener.ProteusImport import ensure_proteus_on_path
+from Tilda.Driver.ProteusListener.ProteusImport import (
+    ensure_proteus_on_path,
+    ensure_remote_instance_connected,
+)
 
 ensure_proteus_on_path()
 
@@ -103,7 +106,7 @@ class TildaProteusBridge:
 
         def _worker():
             try:
-                self.instance.add_instance(address)
+                ensure_remote_instance_connected(self.instance, address)
                 result["ok"] = True
             except Exception as exc:
                 result["exc"] = exc

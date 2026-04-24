@@ -17,7 +17,10 @@ from typing import Dict, List
 import threading
 
 import Tilda.Application.Config as Cfg
-from Tilda.Driver.ProteusListener.ProteusImport import ensure_proteus_on_path
+from Tilda.Driver.ProteusListener.ProteusImport import (
+    ensure_proteus_on_path,
+    ensure_remote_instance_connected,
+)
 from Tilda.Interface.PreScanConfigUi.Ui_PreScanMain import Ui_PreScanMainWin
 from Tilda.Interface.DmmUi.ChooseDmmWidget import ChooseDmmWidget
 from Tilda.Interface.DmmUi.DMMWidgets import Ni4071Widg
@@ -955,7 +958,7 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
                 logging.info("Proteus worker: creating Instance() with lab config")
                 with proteus.Instance(**PROTEUS_INSTANCE_CONFIG) as inst:
                     logging.info("Proteus worker: add_instance(%s)", addr)
-                    inst.add_instance(addr)
+                    ensure_remote_instance_connected(inst, addr)
 
                     logging.info("Proteus worker: creating InstanceObject")
                     helper = InstanceObject(inst)

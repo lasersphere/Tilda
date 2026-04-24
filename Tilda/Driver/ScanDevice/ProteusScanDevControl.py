@@ -27,7 +27,10 @@ from typing import Any, Optional, Tuple
 
 import numpy as np
 
-from Tilda.Driver.ProteusListener.ProteusImport import ensure_proteus_on_path
+from Tilda.Driver.ProteusListener.ProteusImport import (
+    ensure_proteus_on_path,
+    ensure_remote_instance_connected,
+)
 from Tilda.Driver.ScanDevice.BaseTildaScanDeviceControl import BaseTildaScanDeviceControl
 from Tilda.PolliFit.Measurement.SpecData import SpecDataXAxisUnits as Units
 
@@ -286,7 +289,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl):
             self.instance = self._cm_instance.__enter__()
             self.instance_object = InstanceObject(self.instance)
         if self.instance_address:
-            self.instance.add_instance(self.instance_address)
+            ensure_remote_instance_connected(self.instance, self.instance_address)
 
     def _ensure_connection(self):
         if self._connection is None:
