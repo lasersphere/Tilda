@@ -403,11 +403,12 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
                 'Proteus target syntax:\n'
                 'Compact: tcp://host:7000::DeviceName::setpoint\n'
                 'Explicit: instance=tcp://host:7000;device=DeviceName;'
-                'variable=setpoint;readback=setpoint_readback;ready=ready'
+                'variable=set_val;readback=scan_var;ready=ready\n'
+                'Use variable= for the writable setpoint and readback= for the measurement channel.'
             )
             if self.comboBox_scanDev_name.lineEdit() is not None:
                 self.comboBox_scanDev_name.lineEdit().setPlaceholderText(
-                    'instance=tcp://host:7000;device=MyDevice;variable=setpoint'
+                    'instance=tcp://host:7000;device=MyDevice;variable=set_val;readback=scan_var'
                 )
         else:
             self.comboBox_scanDev_name.setToolTip('')

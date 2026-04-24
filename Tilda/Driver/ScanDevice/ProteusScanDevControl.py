@@ -14,8 +14,8 @@ Compact:
 
 Explicit:
     instance=tcp://host:6000;device=MyDevice;variable=setpoint
-    instance=tcp://host:7000;device=MyDevice;variable=setpoint;
-    readback=setpoint_readback;ready=ready
+    instance=tcp://host:7000;device=MyDevice;variable=set_val;
+    readback=scan_var;ready=ready
 
 If the variable name is omitted, ``setpoint`` is used.
 """
@@ -76,6 +76,10 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl):
     - ``readback``: variable that should match the requested setpoint
     - ``ready``: boolean variable that should become ``True`` once the
       device has settled
+
+    The configured scan-device target itself must be the writable setpoint
+    variable. Read-only measurement channels such as ``scan_var`` belong
+    into ``readback=...`` instead.
     """
 
     def __init__(self):
@@ -160,6 +164,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl):
         self.sc_l_cur_scan = 0
         self.sc_l_perc_compl = 0.0
         self.scan_status = "setupForScan"
+        self._ensure_connection()
 
         self.scan_dev_has_setup_these_pars_pyqtsig.emit({
             "unitName": self.return_scan_dev_info().get("stepUnitName", Units.not_defined.name),
@@ -292,28 +297,64 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl):
             ensure_remote_instance_connected(self.instance, self.instance_address)
 
     def _ensure_connection(self):
-        if self._connection is None:
-            if not self.target_device:
-                raise RuntimeError("Proteus target device is not configured")
-            self._ensure_instance()
-            self._connection = Connection(self.instance, self.target_device, self.target_variable)
-        return self._connection
+        if self._connection is not None and getattr(self._connection, "is_connected", False):
+            return self._connection
+
+        if not self.target_device:
+            raise RuntimeError("Proteus target device is not configured")
+
+        self._ensure_instance()
+        deadline = time.perf_counter() + 2.0
+        last_exc = None
+        while time.perf_counter() <= deadline:
+            try:
+                conn = Connection(self.instance, self.target_device, self.target_variable)
+                if conn.is_connected:
+                    self._connection = conn
+                    logger.info(
+                        "ProteusScanDevControl: connected to %s on %s",
+                        f"{self.target_device}.{self.target_variable}",
+                        self.instance_address or "<local>",
+                    )
+                    return self._connection
+                last_exc = RuntimeError(
+                    f"Target Property {self.target_variable} on Device {self.target_device} not connected yet"
+                )
+            except Exception as exc:
+                last_exc = exc
+                logger.debug(
+                    "ProteusScanDevControl: connection retry for %s.%s failed",
+                    self.target_device,
+                    self.target_variable,
+                    exc_info=True,
+                )
+            time.sleep(0.1)
+
+        raise RuntimeError(self._build_connection_error(last_exc))
 
     def _ensure_readback_connection(self):
         if not self.readback_variable:
             return None
-        if self._readback_connection is None:
-            self._ensure_instance()
-            self._readback_connection = Connection(self.instance, self.target_device, self.readback_variable)
-        return self._readback_connection
+        if self._readback_connection is not None and getattr(self._readback_connection, "is_connected", False):
+            return self._readback_connection
+        self._ensure_instance()
+        conn = Connection(self.instance, self.target_device, self.readback_variable)
+        if conn.is_connected:
+            self._readback_connection = conn
+            return self._readback_connection
+        return None
 
     def _ensure_ready_connection(self):
         if not self.ready_variable:
             return None
-        if self._ready_connection is None:
-            self._ensure_instance()
-            self._ready_connection = Connection(self.instance, self.target_device, self.ready_variable)
-        return self._ready_connection
+        if self._ready_connection is not None and getattr(self._ready_connection, "is_connected", False):
+            return self._ready_connection
+        self._ensure_instance()
+        conn = Connection(self.instance, self.target_device, self.ready_variable)
+        if conn.is_connected:
+            self._ready_connection = conn
+            return self._ready_connection
+        return None
 
     def _known_device_names(self):
         self._ensure_instance()
@@ -336,8 +377,24 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl):
 
     def _write_setpoint(self, value):
         self._set_ready_false_before_step()
-        conn = self._ensure_connection()
-        conn.set(value)
+        last_exc = None
+        for attempt in range(3):
+            conn = self._ensure_connection()
+            try:
+                conn.set(value)
+                return
+            except Exception as exc:
+                last_exc = exc
+                logger.warning(
+                    "ProteusScanDevControl: set attempt %d failed for %s.%s, retrying",
+                    attempt + 1,
+                    self.target_device,
+                    self.target_variable,
+                    exc_info=True,
+                )
+                self._connection = None
+                time.sleep(0.1)
+        raise RuntimeError(self._build_connection_error(last_exc, during_write=True)) from last_exc
 
     def _read_property_now(self, prop_name: str):
         if not prop_name or not self.target_device:
@@ -395,6 +452,24 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl):
             "Proteus scan device did not confirm the new setpoint within "
             f"{timeout_s:.2f} s"
         )
+
+    def _build_connection_error(self, exc: Exception, during_write: bool = False) -> str:
+        action = "write to" if during_write else "connect to"
+        msg = (
+            f"Proteus scan device could not {action} "
+            f"{self.target_device}.{self.target_variable} at {self.instance_address or '<local>'}: {exc}"
+        )
+        msg += (
+            ". The scan-device target must be the writable setpoint variable. "
+            "If your Proteus device exposes a separate readout such as 'scan_var', "
+            "configure the scan device with explicit syntax like "
+            "'instance=tcp://host:7000;device=Benchmark_Dev;variable=<writable_setpoint>;readback=scan_var'."
+        )
+        if self.readback_variable:
+            msg += f" Current readback is '{self.readback_variable}'."
+        if self.ready_variable:
+            msg += f" Current ready variable is '{self.ready_variable}'."
+        return msg
 
     def _calc_next_position(self) -> Tuple[int, int]:
         if self.sc_num_of_steps <= 0 or self.sc_num_of_scans <= 0:
