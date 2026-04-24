@@ -296,6 +296,12 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl):
         if self.instance_address:
             ensure_remote_instance_connected(self.instance, self.instance_address)
 
+    def _connect_property(self, variable_name: str):
+        self._ensure_instance()
+        if self.instance_object is None:
+            raise RuntimeError("Proteus instance object is not available")
+        return self.instance_object.connect(self.target_device, variable_name)
+
     def _ensure_connection(self):
         if self._connection is not None and getattr(self._connection, "is_connected", False):
             return self._connection
@@ -308,7 +314,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl):
         last_exc = None
         while time.perf_counter() <= deadline:
             try:
-                conn = Connection(self.instance, self.target_device, self.target_variable)
+                conn = self._connect_property(self.target_variable)
                 if conn.is_connected:
                     self._connection = conn
                     logger.info(
@@ -337,8 +343,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl):
             return None
         if self._readback_connection is not None and getattr(self._readback_connection, "is_connected", False):
             return self._readback_connection
-        self._ensure_instance()
-        conn = Connection(self.instance, self.target_device, self.readback_variable)
+        conn = self._connect_property(self.readback_variable)
         if conn.is_connected:
             self._readback_connection = conn
             return self._readback_connection
@@ -349,8 +354,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl):
             return None
         if self._ready_connection is not None and getattr(self._ready_connection, "is_connected", False):
             return self._ready_connection
-        self._ensure_instance()
-        conn = Connection(self.instance, self.target_device, self.ready_variable)
+        conn = self._connect_property(self.ready_variable)
         if conn.is_connected:
             self._ready_connection = conn
             return self._ready_connection
@@ -400,8 +404,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl):
         if not prop_name or not self.target_device:
             return None
         try:
-            self._ensure_instance()
-            conn = Connection(self.instance, self.target_device, prop_name)
+            conn = self._connect_property(prop_name)
             if not conn.is_connected:
                 return None
             return conn.get()
