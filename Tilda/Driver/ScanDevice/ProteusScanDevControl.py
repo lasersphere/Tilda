@@ -110,6 +110,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         self._display_target_map: Dict[str, str] = {}
         self._known_devices_cache: Dict[str, Dict[str, Dict[str, str]]] = {}
         self._connected_instance_addresses = set()
+        self._failed_instance_addresses = set()
 
         self.sc_start = 0.0
         self.sc_stop = 0.0
@@ -255,6 +256,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         self._display_target_map = {}
         self._known_devices_cache = {}
         self._connected_instance_addresses.clear()
+        self._failed_instance_addresses.clear()
         if self._cm_instance is not None:
             try:
                 self._cm_instance.__exit__(None, None, None)
@@ -299,12 +301,13 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
     def _ensure_discovery_instances_connected(self):
         self._ensure_instance()
         for address in self._remote_instance_addresses():
-            if address in self._connected_instance_addresses:
+            if address in self._connected_instance_addresses or address in self._failed_instance_addresses:
                 continue
             try:
                 ensure_remote_instance_connected(self.instance, address)
                 self._connected_instance_addresses.add(address)
             except Exception:
+                self._failed_instance_addresses.add(address)
                 logger.debug(
                     "ProteusScanDevControl: failed to connect discovery instance %s",
                     address,
@@ -312,23 +315,34 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
                 )
 
     def _refresh_known_targets(self):
-        self._ensure_discovery_instances_connected()
         cache = {}
         targets = []
         display_target_map = {}
-        known = {}
-        try:
-            known = self.known_devices()
-        except Exception:
-            logger.debug("ProteusScanDevControl: known_devices() failed during discovery", exc_info=True)
-        for dev_name, props in known.items():
-            if not isinstance(props, dict):
+        for address in self._remote_instance_addresses():
+            if address in self._failed_instance_addresses:
                 continue
-            cache[dev_name] = dict(props)
-            for var_name in sorted(props.keys()):
-                short_target = f"{dev_name}::{var_name}"
-                targets.append(short_target)
-                display_target_map[short_target] = short_target
+            try:
+                known = self._query_remote_instance_targets(address)
+            except Exception:
+                self._failed_instance_addresses.add(address)
+                logger.debug(
+                    "ProteusScanDevControl: failed to query remote instance %s for discovery",
+                    address,
+                    exc_info=True,
+                )
+                continue
+            address_targets = {}
+            for dev_name, props in known.items():
+                if not isinstance(props, dict):
+                    continue
+                address_targets[dev_name] = dict(props)
+                for var_name in sorted(props.keys()):
+                    short_target = f"{dev_name}::{var_name}"
+                    full_target = f"{address}::{dev_name}::{var_name}"
+                    targets.append(short_target)
+                    display_target_map.setdefault(short_target, full_target)
+            if address_targets:
+                cache[address] = address_targets
         if not cache:
             logger.debug("ProteusScanDevControl: no remote Proteus targets discovered")
         self._known_devices_cache = cache
@@ -390,15 +404,18 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         self._readback_connection = None
         self._ready_connection = None
         if self.instance_address:
-            try:
-                ensure_remote_instance_connected(self.instance, self.instance_address)
-                self._connected_instance_addresses.add(self.instance_address)
-            except Exception:
-                logger.debug(
-                    "ProteusScanDevControl: failed to connect selected target instance %s",
-                    self.instance_address,
-                    exc_info=True,
-                )
+            self._failed_instance_addresses.discard(self.instance_address)
+            if self.instance_address not in self._connected_instance_addresses:
+                try:
+                    ensure_remote_instance_connected(self.instance, self.instance_address)
+                    self._connected_instance_addresses.add(self.instance_address)
+                except Exception:
+                    self._failed_instance_addresses.add(self.instance_address)
+                    logger.debug(
+                        "ProteusScanDevControl: failed to connect selected target instance %s",
+                        self.instance_address,
+                        exc_info=True,
+                    )
 
     def _connect_property(self, variable_name: str):
         return self.connect(self.target_device, variable_name)
