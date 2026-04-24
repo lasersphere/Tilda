@@ -88,6 +88,8 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         "tcp://192.168.11.6:7000",
         "tcp://192.168.11.103:7000",
     ]
+    DISCOVERED_TARGET_MAP: Dict[str, str] = {}
+    DISCOVERED_TARGETS: List[str] = []
 
     def __init__(self):
         BaseTildaScanDeviceControl.__init__(self)
@@ -107,7 +109,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         self._ready_connection = None
 
         self._known_targets: List[str] = []
-        self._display_target_map: Dict[str, str] = {}
+        self._display_target_map: Dict[str, str] = dict(self.DISCOVERED_TARGET_MAP)
         self._known_devices_cache: Dict[str, Dict[str, Dict[str, str]]] = {}
         self._connected_instance_addresses = set()
         self._failed_instance_addresses = set()
@@ -125,6 +127,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         self.scan_status = "initialized"
         self._busy = False
         self.scan_dev_timeout = 10.0
+        self._known_targets = list(self.DISCOVERED_TARGETS)
 
         if PROTEUS_AVAILABLE:
             self._create_local_instance()
@@ -376,6 +379,8 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         self._known_devices_cache = cache
         self._known_targets = sorted(set(targets))
         self._display_target_map = display_target_map
+        self.__class__.DISCOVERED_TARGETS = list(self._known_targets)
+        self.__class__.DISCOVERED_TARGET_MAP = dict(self._display_target_map)
 
     def _parse_target_spec(self, spec: str) -> Tuple[str, str, str, str, str]:
         spec = str(spec or "").strip()
@@ -418,7 +423,11 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         return parts[0], parts[1], parts[2], "", ""
 
     def _configure_target(self, target_spec: str):
-        target_spec = self._display_target_map.get(target_spec, target_spec)
+        target_spec = str(target_spec or "").strip()
+        target_spec = self._display_target_map.get(
+            target_spec,
+            self.__class__.DISCOVERED_TARGET_MAP.get(target_spec, target_spec),
+        )
         instance_address, device_name, variable_name, readback_variable, ready_variable = (
             self._parse_target_spec(target_spec)
         )
