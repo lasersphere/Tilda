@@ -88,10 +88,13 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         "tcp://192.168.11.6:7000",
         "tcp://192.168.11.103:7000",
     ]
-    DISCOVERED_TARGET_MAP: Dict[str, str] = {}   #For short GUI list elents
+    # Cache short GUI labels such as ``Device::Variable`` to their full
+    # ``tcp://host:port::Device::Variable`` targets.
+    DISCOVERED_TARGET_MAP: Dict[str, str] = {}
     DISCOVERED_TARGETS: List[str] = []
 
     def __init__(self):
+        """Initialise local scan state, target metadata, and the Proteus client."""
         BaseTildaScanDeviceControl.__init__(self)
 
         self._cm_instance = None
@@ -102,7 +105,8 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         self.target_variable = "setpoint"
         self.readback_variable = ""
         self.ready_variable = ""
-        self.target_spec = ""           #raw string from GUI dropdown
+        # Raw target string selected or typed in the GUI before parsing.
+        self.target_spec = ""
 
         self._connection = None
         self._readback_connection = None
@@ -134,16 +138,20 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
 
     @property
     def instance(self):
+        """Return the local Proteus instance used by this controller."""
         return self._instance
 
     @instance.setter
     def instance(self, value):
+        """Store the local Proteus instance reference."""
         self._instance = value
 
     def available_scan_dev_types(self):
+        """Expose the single scan-device type handled by this controller."""
         return ["Proteus"]
 
     def available_scan_dev_names_by_type(self, dev_type):
+        """Return the discovered Proteus device/variable targets for the UI."""
         if dev_type != "Proteus":
             return []
 
@@ -159,6 +167,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         return names
 
     def return_scan_dev_info(self, dev_type=None, dev_name=None):
+        """Return generic scan-device metadata for the currently selected target."""
         if dev_name:
             self._configure_target(dev_name)
 
@@ -178,6 +187,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         }
 
     def setup_scan_in_scan_dev(self, start, stepsize, num_of_steps, num_of_scans, invert_in_odd_scans):
+        """Store scan parameters, precompute step values, and validate the target connection."""
         self.sc_start = float(start)
         self.sc_stepsize = float(stepsize)
         self.sc_num_of_steps = int(num_of_steps)
@@ -206,6 +216,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         })
 
     def request_next_step(self):
+        """Advance to the next scan point, write it to Proteus, and report success upstream."""
         if self._busy:
             logger.warning("ProteusScanDevControl is still busy setting the previous step")
             return False
@@ -237,10 +248,12 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
             self._busy = False
 
     def abort_scan(self):
+        """Mark the current scan as aborted."""
         self.scan_status = "aborted"
         return True
 
     def set_pre_scan_masurement_setpoint(self, set_val):
+        """Write a one-off setpoint used before or after the actual scan."""
         if set_val is None:
             return True
         try:
@@ -251,6 +264,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         return True
 
     def deinit_scan_dev(self):
+        """Drop cached connections and shut down the local Proteus instance."""
         self._connection = None
         self._readback_connection = None
         self._ready_connection = None
@@ -268,14 +282,17 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         self._instance = None
 
     def connect(self, device_name: str, variable_name: str):
+        """Create a Proteus Connection object for a device property."""
         self._ensure_instance()
         return InstanceObject.connect(self, device_name, variable_name)
 
     def known_devices(self):
+        """Return the device/property view that Proteus currently knows about."""
         self._ensure_instance()
         return InstanceObject.known_devices(self)
 
     def _create_local_instance(self):
+        """Create the local Proteus client instance if it does not already exist."""
         if not PROTEUS_AVAILABLE:
             raise RuntimeError("proteus package is not available")
         if self._instance is None:
@@ -284,12 +301,14 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         return self._instance
 
     def _ensure_instance(self):
+        """Guarantee that a local Proteus client instance exists."""
         if not PROTEUS_AVAILABLE:
             raise RuntimeError("proteus package is not available")
         if self._instance is None:
             self._create_local_instance()
 
     def _remote_instance_addresses(self):
+        """Build the list of remote Proteus instances to probe or connect to."""
         addresses = list(self.DISCOVERY_INSTANCE_ADDRESSES)
         if self.instance_address and self.instance_address not in addresses:
             addresses.append(self.instance_address)
@@ -301,6 +320,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         return result
 
     def _ensure_discovery_instances_connected(self):
+        """Join configured remote instances once so discovery can inspect their status."""
         self._ensure_instance()
         for address in self._remote_instance_addresses():
             if address in self._connected_instance_addresses or address in self._failed_instance_addresses:
@@ -317,6 +337,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
                 )
 
     def _query_remote_instance_targets(self, address: str):
+        """Read the exported device/property status for one remote Proteus instance."""
         address = str(address or "").strip()
         if not address:
             return {}
@@ -346,6 +367,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         return status if isinstance(status, dict) else {}
 
     def _refresh_known_targets(self):
+        """Refresh the short-label to full-target mapping used by the dropdown."""
         cache = {}
         targets = []
         display_target_map = {}
@@ -383,6 +405,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         self.__class__.DISCOVERED_TARGET_MAP = dict(self._display_target_map)
 
     def _parse_target_spec(self, spec: str) -> Tuple[str, str, str, str, str]:
+        """Parse compact or explicit target syntax into instance/device/property fields."""
         spec = str(spec or "").strip()
         if "=" in spec:
             entries = {}
@@ -423,6 +446,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         return parts[0], parts[1], parts[2], "", ""
 
     def _configure_target(self, target_spec: str):
+        """Resolve a UI target string and store the parsed target fields on the controller."""
         target_spec = str(target_spec or "").strip()
         target_spec = self._display_target_map.get(
             target_spec,
@@ -455,9 +479,11 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
                     )
 
     def _connect_property(self, variable_name: str):
+        """Create a Proteus connection for the selected device and one property."""
         return self.connect(self.target_device, variable_name)
 
     def _ensure_connection(self):
+        """Create and cache the main writable connection used for stepping the scan."""
         if self._connection is not None and getattr(self._connection, "is_connected", False):
             return self._connection
 
@@ -493,6 +519,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         raise RuntimeError(self._build_connection_error(last_exc))
 
     def _ensure_readback_connection(self):
+        """Create and cache the optional readback connection if configured."""
         if not self.readback_variable:
             return None
         if self._readback_connection is not None and getattr(self._readback_connection, "is_connected", False):
@@ -504,6 +531,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         return None
 
     def _ensure_ready_connection(self):
+        """Create and cache the optional ready-state connection if configured."""
         if not self.ready_variable:
             return None
         if self._ready_connection is not None and getattr(self._ready_connection, "is_connected", False):
@@ -515,6 +543,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         return None
 
     def _write_setpoint(self, value):
+        """Write a scan setpoint to Proteus, retrying transient failures."""
         self._set_ready_false_before_step()
         last_exc = None
         for attempt in range(3):
@@ -536,6 +565,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         raise RuntimeError(self._build_connection_error(last_exc, during_write=True)) from last_exc
 
     def _set_ready_false_before_step(self):
+        """Best-effort reset of the ready flag before sending a new step."""
         if not self.ready_variable:
             return
         try:
@@ -550,6 +580,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
             )
 
     def _read_property_now(self, prop_name: str):
+        """Read the current value of a target, readback, or ready property."""
         if not prop_name or not self.target_device:
             return None
         try:
@@ -574,6 +605,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
             return None
 
     def _values_match(self, expected: Any, actual: Any, atol: float = 1e-9) -> bool:
+        """Compare expected and actual values, using tolerance for numeric types."""
         if actual is None:
             return False
         if isinstance(expected, (int, float)) and isinstance(actual, (int, float)):
@@ -581,6 +613,14 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         return expected == actual
 
     def _wait_until_step_is_applied(self, expected_value: Any):
+        """
+        Poll settle signals until the new setpoint is considered applied.
+
+        If a ``ready`` variable is configured, it is treated as the
+        authoritative indication that the device has finished moving to the
+        new step. Otherwise the controller falls back to comparing the
+        readback/target value against the requested setpoint.
+        """
         timeout_s = max(0.0, float(getattr(self, "scan_dev_timeout", 0.0) or 0.0))
         if timeout_s <= 0.0:
             timeout_s = 10.0
@@ -588,22 +628,21 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         deadline = time.perf_counter() + timeout_s
 
         while time.perf_counter() <= deadline:
-            readback_ok = True
-            ready_ok = True
-
-            readback_name = self.readback_variable or self.target_variable
-            readback_val = self._read_property_now(readback_name)
-            if readback_val is not None:
-                readback_ok = self._values_match(expected_value, readback_val)
-            elif self.readback_variable:
-                readback_ok = False
-
             if self.ready_variable:
                 ready_val = self._read_property_now(self.ready_variable)
-                ready_ok = bool(ready_val) if ready_val is not None else False
+                if ready_val is not None and bool(ready_val):
+                    return
+            else:
+                readback_ok = True
+                readback_name = self.readback_variable or self.target_variable
+                readback_val = self._read_property_now(readback_name)
+                if readback_val is not None:
+                    readback_ok = self._values_match(expected_value, readback_val)
+                elif self.readback_variable:
+                    readback_ok = False
 
-            if readback_ok and ready_ok:
-                return
+                if readback_ok:
+                    return
 
             time.sleep(poll_interval_s)
 
@@ -613,6 +652,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         )
 
     def _build_connection_error(self, exc: Exception, during_write: bool = False) -> str:
+        """Format a consistent error message for connection or write failures."""
         action = "write to" if during_write else "connect to"
         return (
             f"Proteus scan device could not {action} "
@@ -621,6 +661,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         )
 
     def _calc_next_position(self) -> Tuple[int, int]:
+        """Compute the next step/scan indices, including inverted odd scans."""
         if self.sc_num_of_steps <= 0 or self.sc_num_of_scans <= 0:
             raise RuntimeError("scan parameters are not initialised")
 
@@ -644,9 +685,11 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         return 0, next_scan
 
     def _scan_is_inverted(self, scan_index: int) -> bool:
+        """Return whether a given scan index should run in reverse order."""
         return self.sc_invert_in_odd_scans and scan_index % 2 == 1
 
     def _calc_percent_complete(self) -> float:
+        """Estimate the completed fraction of the full scan sequence."""
         if self.sc_l_cur_step < 0:
             return 0.0
         if self._scan_is_inverted(self.sc_l_cur_scan):
@@ -663,4 +706,5 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         return completed_steps / total_steps
 
     def _is_complete(self) -> bool:
+        """Return whether the computed scan progress has reached completion."""
         return self._calc_percent_complete() >= 1.0
