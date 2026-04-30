@@ -5,26 +5,16 @@ This controller owns its own local Proteus instance, discovers devices on a
 configured list of remote Proteus instances, and drives a selected writable
 Proteus variable step-by-step for scans.
 
-Supported target syntaxes:
-
-Compact:
-    DeviceName
-    DeviceName::VariableName
-    tcp://host:6000::DeviceName
-    tcp://host:6000::DeviceName::VariableName
-
-Explicit:
-    instance=tcp://host:7000;device=MyDevice;variable=set_val
-    instance=tcp://host:7000;device=MyDevice;variable=set_val;
-    readback=scan_var;ready=ready
-
-If the variable name is omitted, ``setpoint`` is used.
+Track UI input:
+    Type box: tcp://host:7000::DeviceName
+    Name box: VariableName
+    Name box explicit: variable=set_val;readback=scan_var;ready=ready
 """
 
 import logging
 import math
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 
@@ -36,6 +26,18 @@ from Tilda.Driver.ScanDevice.BaseTildaScanDeviceControl import BaseTildaScanDevi
 from Tilda.PolliFit.Measurement.SpecData import SpecDataXAxisUnits as Units
 
 logger = logging.getLogger(__name__)
+DEBUG_MODE = False
+
+
+def _debug_exception(message: str, *args):
+    """Log a short debug message unless full tracebacks are explicitly enabled."""
+    if DEBUG_MODE:
+        logger.debug(message, *args, exc_info=True)
+        return
+    logger.debug(
+        message + "; set DEBUG_MODE=True in ProteusScanDevControl for full traceback",
+        *args,
+    )
 
 ensure_proteus_on_path()
 
@@ -87,9 +89,9 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
     DISCOVERY_INSTANCE_ADDRESSES = [
         "tcp://192.168.11.6:7000",
         "tcp://192.168.11.103:7000",
+        #"tcp://192.168.14.251:7000"
     ]
-    # Cache short GUI labels such as ``Device::Variable`` to their full
-    # ``tcp://host:port::Device::Variable`` targets.
+    # Cache discovered ``instance::device`` entries for the Track UI.
     DISCOVERED_TARGET_MAP: Dict[str, str] = {}
     DISCOVERED_TARGETS: List[str] = []
 
@@ -147,33 +149,52 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         self._instance = value
 
     def available_scan_dev_types(self):
-        """Expose the single scan-device type handled by this controller."""
-        return ["Proteus"]
-
-    def available_scan_dev_names_by_type(self, dev_type):
-        """Return the discovered Proteus device/variable targets for the UI."""
-        if dev_type != "Proteus":
-            return []
-
-        names = []
+        """Discover and return selectable ``instance::device`` targets."""
         try:
             self._refresh_known_targets()
-            names.extend(self._known_targets)
         except Exception:
-            logger.debug("ProteusScanDevControl: device discovery failed", exc_info=True)
+            _debug_exception("ProteusScanDevControl: device discovery failed")
 
-        if self.target_spec and self.target_spec not in names:
-            names.append(self.target_spec)
+        dev_types = list(self._known_targets)
+        current_type = self._current_device_spec()
+        if current_type and current_type not in dev_types:
+            dev_types.append(current_type)
+        return dev_types
+
+    def available_scan_dev_names_by_type(self, dev_type):
+        """Rescan the selected target instance and return the device's variables."""
+        names = []
+        device_spec = self._normalise_device_spec(dev_type)
+        if device_spec:
+            try:
+                instance_address, device_name = self._parse_device_spec(device_spec)
+                device_variables = self._query_device_variables(instance_address, device_name)
+                names.extend(device_variables)
+            except Exception:
+                _debug_exception(
+                    "ProteusScanDevControl: variable discovery failed for %s",
+                    dev_type,
+                )
+
+        current_type = self._current_device_spec()
+        if self.target_variable and device_spec and device_spec == current_type and self.target_variable not in names:
+            names.append(self.target_variable)
         return names
 
     def return_scan_dev_info(self, dev_type=None, dev_name=None):
         """Return generic scan-device metadata for the currently selected target."""
         if dev_name:
-            self._configure_target(dev_name)
+            try:
+                target_spec = self._build_target_spec_from_selection(dev_type, dev_name)
+            except ValueError:
+                _debug_exception("ProteusScanDevControl: invalid variable selection %s", dev_name)
+            else:
+                if target_spec:
+                    self._configure_target(target_spec)
 
         return {
-            "name": self.target_spec or dev_name or "ProteusDevice",
-            "type": "Proteus",
+            "name": dev_name or self.target_variable or "setpoint",
+            "type": dev_type or self._current_device_spec() or "Proteus",
             "devClass": "Proteus",
             "stepUnitName": Units.not_defined.name,
             "start": self.sc_start,
@@ -330,10 +351,9 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
                 self._connected_instance_addresses.add(address)
             except Exception:
                 self._failed_instance_addresses.add(address)
-                logger.debug(
+                _debug_exception(
                     "ProteusScanDevControl: failed to connect discovery instance %s",
                     address,
-                    exc_info=True,
                 )
 
     def _query_remote_instance_targets(self, address: str):
@@ -358,19 +378,17 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         try:
             status = remote_ref._status_json()
         except Exception:
-            logger.debug(
+            _debug_exception(
                 "ProteusScanDevControl: failed to read status json from %s",
                 address,
-                exc_info=True,
             )
             return {}
         return status if isinstance(status, dict) else {}
 
     def _refresh_known_targets(self):
-        """Refresh the short-label to full-target mapping used by the dropdown."""
+        """Refresh the discovered ``instance::device`` entries used by the UI."""
         cache = {}
         targets = []
-        display_target_map = {}
         for address in self._remote_instance_addresses():
             if address in self._failed_instance_addresses:
                 continue
@@ -378,10 +396,9 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
                 known = self._query_remote_instance_targets(address)
             except Exception:
                 self._failed_instance_addresses.add(address)
-                logger.debug(
+                _debug_exception(
                     "ProteusScanDevControl: failed to query remote instance %s for discovery",
                     address,
-                    exc_info=True,
                 )
                 continue
             address_targets = {}
@@ -389,20 +406,115 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
                 if not isinstance(props, dict):
                     continue
                 address_targets[dev_name] = dict(props)
-                for var_name in sorted(props.keys()):
-                    short_target = f"{dev_name}::{var_name}"
-                    full_target = f"{address}::{dev_name}::{var_name}"
-                    targets.append(short_target)
-                    display_target_map.setdefault(short_target, full_target)
+                targets.append(f"{address}::{dev_name}")
             if address_targets:
                 cache[address] = address_targets
         if not cache:
             logger.debug("ProteusScanDevControl: no remote Proteus targets discovered")
         self._known_devices_cache = cache
         self._known_targets = sorted(set(targets))
-        self._display_target_map = display_target_map
+        self._display_target_map = {target: target for target in self._known_targets}
         self.__class__.DISCOVERED_TARGETS = list(self._known_targets)
         self.__class__.DISCOVERED_TARGET_MAP = dict(self._display_target_map)
+
+    def _current_device_spec(self) -> str:
+        """Return the configured target without the variable component."""
+        if not self.target_device:
+            return ""
+        if self.instance_address:
+            return f"{self.instance_address}::{self.target_device}"
+        return self.target_device
+
+    def _normalise_device_spec(self, dev_type: str) -> str:
+        """Resolve discovered labels and tolerate legacy placeholder values."""
+        dev_type = str(dev_type or "").strip()
+        if not dev_type or dev_type == "Proteus":
+            return self._current_device_spec()
+        return self._display_target_map.get(
+            dev_type,
+            self.__class__.DISCOVERED_TARGET_MAP.get(dev_type, dev_type),
+        )
+
+    def _parse_device_spec(self, spec: str) -> Tuple[str, str]:
+        """Parse a device selector into instance and device names."""
+        instance_address, device_name, _variable_name, _readback, _ready = self._parse_target_spec(spec)
+        return instance_address, device_name
+
+    def _query_device_variables(self, instance_address: str, device_name: str) -> List[str]:
+        """Read the variable names for one device from one remote instance."""
+        if instance_address:
+            self._failed_instance_addresses.discard(instance_address)
+            known = self._query_remote_instance_targets(instance_address)
+            device_props = known.get(device_name, {})
+            if isinstance(device_props, dict):
+                cached_devices = self._known_devices_cache.setdefault(instance_address, {})
+                cached_devices[device_name] = dict(device_props)
+                return sorted(device_props.keys())
+            return []
+
+        if not self._known_devices_cache:
+            self._refresh_known_targets()
+        for known in self._known_devices_cache.values():
+            device_props = known.get(device_name)
+            if isinstance(device_props, dict):
+                return sorted(device_props.keys())
+        return []
+
+    def _build_target_spec_from_selection(self, dev_type, dev_name) -> str:
+        """Combine the UI's type/name selections into one target specification."""
+        device_spec = self._normalise_device_spec(dev_type)
+        if not device_spec:
+            return ""
+        instance_address, device_name = self._parse_device_spec(device_spec)
+        default_variable = (
+            self.target_variable
+            if device_spec == self._current_device_spec() and self.target_variable
+            else "setpoint"
+        )
+        variable_name, readback_variable, ready_variable = self._parse_variable_spec(
+            dev_name, default_variable
+        )
+        parts = [f"device={device_name}", f"variable={variable_name}"]
+        if instance_address:
+            parts.insert(0, f"instance={instance_address}")
+        if readback_variable:
+            parts.append(f"readback={readback_variable}")
+        if ready_variable:
+            parts.append(f"ready={ready_variable}")
+        return ";".join(parts)
+
+    def _parse_variable_spec(self, spec: str, default_variable: str = "setpoint") -> Tuple[str, str, str]:
+        """Parse the second-box variable selector and optional readback/ready fields."""
+        spec = str(spec or "").strip()
+        default_variable = str(default_variable or "").strip() or "setpoint"
+        if not spec:
+            return default_variable, "", ""
+        if "::" in spec:
+            raise ValueError("variable selector must not contain an instance or device")
+        if "=" not in spec:
+            return spec, "", ""
+
+        entries = {}
+        for item in spec.split(";"):
+            item = item.strip()
+            if not item:
+                continue
+            if "=" not in item:
+                raise ValueError(
+                    "invalid Proteus variable specification segment "
+                    f"{item!r}; use key=value pairs separated by ';'"
+                )
+            key, value = item.split("=", 1)
+            key = key.strip().lower()
+            if key not in {"variable", "readback", "ready"}:
+                raise ValueError(f"unsupported Proteus variable specification key {key!r}")
+            entries[key] = value.strip()
+
+        return (
+            entries.get("variable", default_variable) or default_variable,
+            entries.get("readback", ""),
+            entries.get("ready", ""),
+        )
 
     def _parse_target_spec(self, spec: str) -> Tuple[str, str, str, str, str]:
         """Parse compact or explicit target syntax into instance/device/property fields."""
@@ -472,10 +584,9 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
                     self._connected_instance_addresses.add(self.instance_address)
                 except Exception:
                     self._failed_instance_addresses.add(self.instance_address)
-                    logger.debug(
+                    _debug_exception(
                         "ProteusScanDevControl: failed to connect selected target instance %s",
                         self.instance_address,
-                        exc_info=True,
                     )
 
     def _connect_property(self, variable_name: str):
@@ -508,11 +619,10 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
                 )
             except Exception as exc:
                 last_exc = exc
-                logger.debug(
+                _debug_exception(
                     "ProteusScanDevControl: connection retry for %s.%s failed",
                     self.target_device,
                     self.target_variable,
-                    exc_info=True,
                 )
             time.sleep(0.1)
 
@@ -551,17 +661,23 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
             try:
                 conn.set(value)
                 return
-            except Exception as exc:
-                last_exc = exc
-                logger.warning(
-                    "ProteusScanDevControl: set attempt %d failed for %s.%s, retrying",
-                    attempt + 1,
-                    self.target_device,
-                    self.target_variable,
-                    exc_info=True,
-                )
-                self._connection = None
-                time.sleep(0.1)
+            except Exception as set_exc:
+                try:
+                    conn.trigger(value)
+                    return
+                except Exception as trigger_exc:
+                    last_exc = RuntimeError(
+                        f"set failed with {set_exc!r}; trigger failed with {trigger_exc!r}"
+                    )
+                    logger.warning(
+                        "ProteusScanDevControl: set/trigger attempt %d failed for %s.%s, retrying",
+                        attempt + 1,
+                        self.target_device,
+                        self.target_variable,
+                        exc_info=True,
+                    )
+                    self._connection = None
+                    time.sleep(0.1)
         raise RuntimeError(self._build_connection_error(last_exc, during_write=True)) from last_exc
 
     def _set_ready_false_before_step(self):
@@ -573,10 +689,9 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
             if conn is not None:
                 conn.set(False)
         except Exception:
-            logger.debug(
+            _debug_exception(
                 "ProteusScanDevControl: failed to clear ready=%s before sending step",
                 self.ready_variable,
-                exc_info=True,
             )
 
     def _read_property_now(self, prop_name: str):
@@ -596,11 +711,10 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
                 return None
             return conn.get()
         except Exception:
-            logger.debug(
+            _debug_exception(
                 "ProteusScanDevControl: failed to read %s from %s",
                 prop_name,
                 self.target_device,
-                exc_info=True,
             )
             return None
 

@@ -401,14 +401,13 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         if is_proteus:
             self.comboBox_scanDev_name.setToolTip(
                 'Proteus target syntax:\n'
-                'Compact: tcp://host:7000::DeviceName::setpoint\n'
-                'Explicit: instance=tcp://host:7000;device=DeviceName;'
-                'variable=set_val;readback=scan_var;ready=ready\n'
-                'Use variable= for the writable setpoint and readback= for the measurement channel.'
+                'Type box: tcp://host:7000::DeviceName\n'
+                'Name box: setpoint\n'
+                'Name box explicit: variable=set_val;readback=scan_var;ready=ready'
             )
             if self.comboBox_scanDev_name.lineEdit() is not None:
                 self.comboBox_scanDev_name.lineEdit().setPlaceholderText(
-                    'instance=tcp://host:7000;device=MyDevice;variable=set_val;readback=scan_var'
+                    'variable=set_val;readback=scan_var;ready=ready'
                 )
         else:
             self.comboBox_scanDev_name.setToolTip('')
