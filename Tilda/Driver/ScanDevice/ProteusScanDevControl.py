@@ -384,11 +384,13 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
                 raise
 
         known_instances = getattr(self.instance, "_known_instances", {})
+        #print("RIs", known_instances, "\n")
         remote_ref = known_instances.get(address)
         if remote_ref is None:
             return {}
         try:
             status = remote_ref._status_json()
+            #print("RI stat", status, "\n")
         except Exception:
             _debug_exception(
                 "ProteusScanDevControl: failed to read status json from %s",
