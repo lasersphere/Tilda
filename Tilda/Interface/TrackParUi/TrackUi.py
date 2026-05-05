@@ -69,6 +69,8 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         # add scan device if not present:
         if self.buffer_pars.get('scanDevice', None) is None:
             self.buffer_pars['scanDevice'] = deepcopy(dft.draft_scan_device)
+        self.buffer_pars['scanDevice'].setdefault('readback', '')
+        self.buffer_pars['scanDevice'].setdefault('ready', '')
 
         logging.info('%s parameters are: %s ' % (self.track_name, self.buffer_pars))
         if self.buffer_pars['scanDevice']['devClass'] == 'DAC':
@@ -141,10 +143,13 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.outbits_confirmed_signal.connect(self.received_new_outbit_dict)
 
         """Scan dev related top to bottom as in gui """
+        self._setup_proteus_aux_widgets()
         self.comboBox_scanDevClass.addItems(dft.scan_dev_classes_available)
         self.comboBox_scanDevClass.currentTextChanged.connect(self.scan_dev_class_changed)
         self.comboBox_scanDev_type.currentTextChanged.connect(self.scan_type_changed)
         self.comboBox_scanDev_name.currentTextChanged.connect(self.scan_dev_name_changed)
+        self.comboBox_scanDev_readback.currentTextChanged.connect(self.scan_dev_readback_changed)
+        self.comboBox_scanDev_ready.currentTextChanged.connect(self.scan_dev_ready_changed)
 
         self.stored_scan_dev_from_init = deepcopy(self.buffer_pars['scanDevice'])
 
@@ -215,6 +220,10 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
                  self.check_for_none(scan_dev_dict.get('type'), 'AD5781')),
                 (self.scan_dev_name_changed,
                  self.check_for_none(scan_dev_dict.get('name'), '')),
+                (self.scan_dev_readback_changed,
+                 self.check_for_none(scan_dev_dict.get('readback'), '')),
+                (self.scan_dev_ready_changed,
+                 self.check_for_none(scan_dev_dict.get('ready'), '')),
                 (self.scan_dev_timeout_set,
                  self.check_for_none(scan_dev_dict.get('timeout_s'), 0)),
                 (self.scan_dev_start_v_set,
@@ -391,28 +400,111 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         logging.info('closed outbit win in iso %s for track %s' % (self.active_iso, self.track_name))
 
     '''scan device related: '''
+    def _setup_proteus_aux_widgets(self):
+        """Add optional Proteus readback/ready selectors below the main scan variable."""
+        parent = self.comboBox_scanDev_name.parent()
+        self.label_scanDev_readback = QtWidgets.QLabel(parent)
+        self.label_scanDev_readback.setText('readback')
+        self.comboBox_scanDev_readback = QtWidgets.QComboBox(parent)
+        self.comboBox_scanDev_readback.setObjectName("comboBox_scanDev_readback")
+        self.label_scanDev_ready = QtWidgets.QLabel(parent)
+        self.label_scanDev_ready.setText('ready')
+        self.comboBox_scanDev_ready = QtWidgets.QComboBox(parent)
+        self.comboBox_scanDev_ready.setObjectName("comboBox_scanDev_ready")
+        self.gridLayout_8.addWidget(self.label_scanDev_readback, 3, 2, 1, 1)
+        self.gridLayout_8.addWidget(self.comboBox_scanDev_readback, 3, 3, 1, 1)
+        self.gridLayout_8.addWidget(self.label_scanDev_ready, 4, 2, 1, 1)
+        self.gridLayout_8.addWidget(self.comboBox_scanDev_ready, 4, 3, 1, 1)
+        self._set_proteus_aux_visibility(False)
+
+    def _set_proteus_aux_visibility(self, visible):
+        """Show or hide the optional Proteus readback/ready selectors."""
+        for widget in (
+            self.label_scanDev_readback,
+            self.comboBox_scanDev_readback,
+            self.label_scanDev_ready,
+            self.comboBox_scanDev_ready,
+        ):
+            widget.setVisible(visible)
+
+    def _refresh_scan_dev_info(self):
+        """Request scan-device metadata for the current scan/readback/ready selection."""
+        is_proteus = self.buffer_pars['scanDevice'].get('devClass') == 'Proteus'
+        if Cfg._main_instance is not None:
+            if is_proteus:
+                scan_dev_info = Cfg._main_instance.scan_main.scan_dev.return_scan_dev_info(
+                    self.buffer_pars['scanDevice']['type'],
+                    self.buffer_pars['scanDevice']['name'],
+                    self.buffer_pars['scanDevice'].get('readback', ''),
+                    self.buffer_pars['scanDevice'].get('ready', ''),
+                )
+            else:
+                scan_dev_info = Cfg._main_instance.scan_main.scan_dev.return_scan_dev_info(
+                    self.buffer_pars['scanDevice']['type'],
+                    self.buffer_pars['scanDevice']['name'],
+                )
+        else:
+            if is_proteus:
+                scan_dev_info = self._scan_main_for_debugging.scan_dev.return_scan_dev_info(
+                    self.buffer_pars['scanDevice']['type'],
+                    self.buffer_pars['scanDevice']['name'],
+                    self.buffer_pars['scanDevice'].get('readback', ''),
+                    self.buffer_pars['scanDevice'].get('ready', ''),
+                )
+            else:
+                scan_dev_info = self._scan_main_for_debugging.scan_dev.return_scan_dev_info(
+                    self.buffer_pars['scanDevice']['type'],
+                    self.buffer_pars['scanDevice']['name'],
+                )
+        self.scan_dev_info_changed(scan_dev_info)
+
     def scan_dev_class_changed(self, scan_dev_class_str):
         """ the scan dev was changed in the combobox -> fill available types and names """
         self.comboBox_scanDev_type.clear()
         self.buffer_pars['scanDevice']['devClass'] = scan_dev_class_str
         is_proteus = scan_dev_class_str == 'Proteus'
+        self._set_proteus_aux_visibility(is_proteus)
         self.comboBox_scanDev_type.setEditable(is_proteus)
         self.comboBox_scanDev_name.setEditable(is_proteus)
+        self.comboBox_scanDev_readback.setEditable(is_proteus)
+        self.comboBox_scanDev_ready.setEditable(is_proteus)
         if is_proteus:
             self.comboBox_scanDev_name.setToolTip(
                 'Proteus target syntax:\n'
                 'Type box: tcp://host:7000::DeviceName\n'
                 'Name box: setpoint\n'
-                'Name box explicit: variable=set_val;readback=scan_var;ready=ready'
+                'Name box explicit: variable=set_val'
             )
             if self.comboBox_scanDev_name.lineEdit() is not None:
                 self.comboBox_scanDev_name.lineEdit().setPlaceholderText(
-                    'variable=set_val;readback=scan_var;ready=ready'
+                    'variable=set_val'
+                )
+            self.comboBox_scanDev_readback.setToolTip(
+                'Leave empty to read back the scan variable.\n'
+                'Use a variable name for the same device or tcp://host:7000::DeviceName::scan_var for another device.'
+            )
+            self.comboBox_scanDev_ready.setToolTip(
+                'Leave empty to use readback/target comparison.\n'
+                'Use a variable name for the same device or tcp://host:7000::DeviceName::ready for another device.'
+            )
+            if self.comboBox_scanDev_readback.lineEdit() is not None:
+                self.comboBox_scanDev_readback.lineEdit().setPlaceholderText(
+                    'blank or tcp://host:7000::DeviceName::scan_var'
+                )
+            if self.comboBox_scanDev_ready.lineEdit() is not None:
+                self.comboBox_scanDev_ready.lineEdit().setPlaceholderText(
+                    'blank or tcp://host:7000::DeviceName::ready'
                 )
         else:
             self.comboBox_scanDev_name.setToolTip('')
             if self.comboBox_scanDev_name.lineEdit() is not None:
                 self.comboBox_scanDev_name.lineEdit().setPlaceholderText('')
+            self.comboBox_scanDev_readback.setToolTip('')
+            self.comboBox_scanDev_ready.setToolTip('')
+            if self.comboBox_scanDev_readback.lineEdit() is not None:
+                self.comboBox_scanDev_readback.lineEdit().setPlaceholderText('')
+            if self.comboBox_scanDev_ready.lineEdit() is not None:
+                self.comboBox_scanDev_ready.lineEdit().setPlaceholderText('')
         self.comboBox_scanDevClass.blockSignals(True)
         self.comboBox_scanDevClass.setCurrentText(scan_dev_class_str)
         self.comboBox_scanDevClass.blockSignals(False)
@@ -440,6 +532,8 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.comboBox_scanDev_type.setCurrentText(scan_type)
         self.comboBox_scanDev_type.blockSignals(False)
         self.comboBox_scanDev_name.clear()
+        self.comboBox_scanDev_readback.clear()
+        self.comboBox_scanDev_ready.clear()
         if Cfg._main_instance is not None:
             dev_names = Cfg._main_instance.scan_main.scan_dev.available_scan_dev_names_by_type(scan_type)
         else:
@@ -454,7 +548,34 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
             if cur_name:
                 dev_names += [cur_name]
         self.comboBox_scanDev_name.addItems(dev_names)
+        aux_names = [''] + dev_names
+        if self.stored_scan_dev_from_init['devClass'] == self.comboBox_scanDevClass.currentText():
+            if self.stored_scan_dev_from_init['type'] == scan_type:
+                for key in ('readback', 'ready'):
+                    stored_value = self.stored_scan_dev_from_init.get(key, '')
+                    if stored_value and stored_value not in aux_names:
+                        aux_names += [stored_value]
+        for key in ('readback', 'ready'):
+            cur_value = self.buffer_pars['scanDevice'].get(key, '')
+            if cur_value and cur_value not in aux_names:
+                aux_names += [cur_value]
+        self.comboBox_scanDev_readback.addItems(aux_names)
+        self.comboBox_scanDev_ready.addItems(aux_names)
+        readback_value = self.buffer_pars['scanDevice'].get('readback', '')
+        ready_value = self.buffer_pars['scanDevice'].get('ready', '')
+        if self.stored_scan_dev_from_init['devClass'] == self.comboBox_scanDevClass.currentText():
+            if self.stored_scan_dev_from_init['type'] == scan_type:
+                readback_value = readback_value or self.stored_scan_dev_from_init.get('readback', '')
+                ready_value = ready_value or self.stored_scan_dev_from_init.get('ready', '')
+        self.comboBox_scanDev_readback.blockSignals(True)
+        self.comboBox_scanDev_readback.setCurrentText(readback_value)
+        self.comboBox_scanDev_readback.blockSignals(False)
+        self.comboBox_scanDev_ready.blockSignals(True)
+        self.comboBox_scanDev_ready.setCurrentText(ready_value)
+        self.comboBox_scanDev_ready.blockSignals(False)
         self.scan_dev_name_changed(self.comboBox_scanDev_name.currentText())
+        self.scan_dev_readback_changed(self.comboBox_scanDev_readback.currentText())
+        self.scan_dev_ready_changed(self.comboBox_scanDev_ready.currentText())
 
     def scan_dev_name_changed(self, sc_dev_name):
         """
@@ -465,14 +586,23 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.comboBox_scanDev_name.blockSignals(True)
         self.comboBox_scanDev_name.setCurrentText(sc_dev_name)
         self.comboBox_scanDev_name.blockSignals(False)
-        # if no scan_main is around return this:
-        if Cfg._main_instance is not None:
-            scan_dev_info = Cfg._main_instance.scan_main.scan_dev.return_scan_dev_info(
-                self.buffer_pars['scanDevice']['type'], sc_dev_name)
-        else:
-            scan_dev_info = self._scan_main_for_debugging.scan_dev.return_scan_dev_info(
-                self.buffer_pars['scanDevice']['type'], sc_dev_name)
-        self.scan_dev_info_changed(scan_dev_info)
+        self._refresh_scan_dev_info()
+
+    def scan_dev_readback_changed(self, readback_name):
+        """Store the optional Proteus readback target and refresh scan-device metadata."""
+        self.buffer_pars['scanDevice']['readback'] = readback_name
+        self.comboBox_scanDev_readback.blockSignals(True)
+        self.comboBox_scanDev_readback.setCurrentText(readback_name)
+        self.comboBox_scanDev_readback.blockSignals(False)
+        self._refresh_scan_dev_info()
+
+    def scan_dev_ready_changed(self, ready_name):
+        """Store the optional Proteus ready target and refresh scan-device metadata."""
+        self.buffer_pars['scanDevice']['ready'] = ready_name
+        self.comboBox_scanDev_ready.blockSignals(True)
+        self.comboBox_scanDev_ready.setCurrentText(ready_name)
+        self.comboBox_scanDev_ready.blockSignals(False)
+        self._refresh_scan_dev_info()
 
     def scan_dev_info_changed(self, scan_dev_info):
         """

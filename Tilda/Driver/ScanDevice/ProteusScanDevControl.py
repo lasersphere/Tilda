@@ -105,10 +105,16 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         self.instance_address = ""
         self.target_device = ""
         self.target_variable = "setpoint"
+        self.readback_instance_address = ""
+        self.readback_device = ""
         self.readback_variable = ""
+        self.ready_instance_address = ""
+        self.ready_device = ""
         self.ready_variable = ""
         # Raw target string selected or typed in the GUI before parsing.
         self.target_spec = ""
+        self.readback_spec = ""
+        self.ready_spec = ""
 
         self._connection = None
         self._readback_connection = None
@@ -181,7 +187,13 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
             names.append(self.target_variable)
         return names
 
-    def return_scan_dev_info(self, dev_type=None, dev_name=None):
+    def return_scan_dev_info(
+        self,
+        dev_type=None,
+        dev_name=None,
+        readback_name="",
+        ready_name="",
+    ):
         """Return generic scan-device metadata for the currently selected target."""
         if dev_name:
             try:
@@ -190,7 +202,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
                 _debug_exception("ProteusScanDevControl: invalid variable selection %s", dev_name)
             else:
                 if target_spec:
-                    self._configure_target(target_spec)
+                    self._configure_target(target_spec, readback_name, ready_name)
 
         return {
             "name": dev_name or self.target_variable or "setpoint",
@@ -516,6 +528,21 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
             entries.get("ready", ""),
         )
 
+    def _parse_aux_target_spec(self, spec: str, default_device_spec: str) -> Tuple[str, str, str]:
+        """Parse an optional readback/ready target, relative to the main scan device."""
+        spec = str(spec or "").strip()
+        if not spec:
+            return "", "", ""
+        if "::" in spec or "device=" in spec.lower() or "instance=" in spec.lower():
+            instance_address, device_name, variable_name, _readback, _ready = self._parse_target_spec(spec)
+            return instance_address, device_name, variable_name
+
+        instance_address, device_name = self._parse_device_spec(default_device_spec)
+        if "=" in spec:
+            variable_name, _readback, _ready = self._parse_variable_spec(spec)
+            return instance_address, device_name, variable_name
+        return instance_address, device_name, spec
+
     def _parse_target_spec(self, spec: str) -> Tuple[str, str, str, str, str]:
         """Parse compact or explicit target syntax into instance/device/property fields."""
         spec = str(spec or "").strip()
@@ -557,7 +584,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
             return "", parts[0], parts[1], "", ""
         return parts[0], parts[1], parts[2], "", ""
 
-    def _configure_target(self, target_spec: str):
+    def _configure_target(self, target_spec: str, readback_spec: str = "", ready_spec: str = ""):
         """Resolve a UI target string and store the parsed target fields on the controller."""
         target_spec = str(target_spec or "").strip()
         target_spec = self._display_target_map.get(
@@ -571,27 +598,49 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         self.instance_address = instance_address
         self.target_device = device_name
         self.target_variable = variable_name or "setpoint"
-        self.readback_variable = readback_variable
-        self.ready_variable = ready_variable
+        main_device_spec = f"{instance_address}::{device_name}" if instance_address else device_name
+        if readback_spec:
+            rb_instance, rb_device, rb_variable = self._parse_aux_target_spec(readback_spec, main_device_spec)
+        elif readback_variable:
+            rb_instance, rb_device, rb_variable = instance_address, device_name, readback_variable
+        else:
+            rb_instance, rb_device, rb_variable = "", "", ""
+        if ready_spec:
+            ready_instance, ready_device, ready_variable_name = self._parse_aux_target_spec(ready_spec, main_device_spec)
+        elif ready_variable:
+            ready_instance, ready_device, ready_variable_name = instance_address, device_name, ready_variable
+        else:
+            ready_instance, ready_device, ready_variable_name = "", "", ""
+        self.readback_spec = str(readback_spec or "").strip()
+        self.ready_spec = str(ready_spec or "").strip()
+        self.readback_instance_address = rb_instance
+        self.readback_device = rb_device
+        self.readback_variable = rb_variable
+        self.ready_instance_address = ready_instance
+        self.ready_device = ready_device
+        self.ready_variable = ready_variable_name
         self._connection = None
         self._readback_connection = None
         self._ready_connection = None
-        if self.instance_address:
-            self._failed_instance_addresses.discard(self.instance_address)
-            if self.instance_address not in self._connected_instance_addresses:
-                try:
-                    ensure_remote_instance_connected(self.instance, self.instance_address)
-                    self._connected_instance_addresses.add(self.instance_address)
-                except Exception:
-                    self._failed_instance_addresses.add(self.instance_address)
-                    _debug_exception(
-                        "ProteusScanDevControl: failed to connect selected target instance %s",
-                        self.instance_address,
-                    )
+        for address in {self.instance_address, self.readback_instance_address, self.ready_instance_address}:
+            if not address:
+                continue
+            self._failed_instance_addresses.discard(address)
+            if address in self._connected_instance_addresses:
+                continue
+            try:
+                ensure_remote_instance_connected(self.instance, address)
+                self._connected_instance_addresses.add(address)
+            except Exception:
+                self._failed_instance_addresses.add(address)
+                _debug_exception(
+                    "ProteusScanDevControl: failed to connect selected target instance %s",
+                    address,
+                )
 
-    def _connect_property(self, variable_name: str):
+    def _connect_property(self, device_name: str, variable_name: str):
         """Create a Proteus connection for the selected device and one property."""
-        return self.connect(self.target_device, variable_name)
+        return self.connect(device_name, variable_name)
 
     def _ensure_connection(self):
         """Create and cache the main writable connection used for stepping the scan."""
@@ -605,7 +654,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
         last_exc = None
         while time.perf_counter() <= deadline:
             try:
-                conn = self._connect_property(self.target_variable)
+                conn = self._connect_property(self.target_device, self.target_variable)
                 if conn.is_connected:
                     self._connection = conn
                     logger.info(
@@ -634,7 +683,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
             return None
         if self._readback_connection is not None and getattr(self._readback_connection, "is_connected", False):
             return self._readback_connection
-        conn = self._connect_property(self.readback_variable)
+        conn = self._connect_property(self.readback_device or self.target_device, self.readback_variable)
         if conn.is_connected:
             self._readback_connection = conn
             return self._readback_connection
@@ -646,7 +695,7 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
             return None
         if self._ready_connection is not None and getattr(self._ready_connection, "is_connected", False):
             return self._ready_connection
-        conn = self._connect_property(self.ready_variable)
+        conn = self._connect_property(self.ready_device or self.target_device, self.ready_variable)
         if conn.is_connected:
             self._ready_connection = conn
             return self._ready_connection
@@ -694,27 +743,20 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
                 self.ready_variable,
             )
 
-    def _read_property_now(self, prop_name: str):
-        """Read the current value of a target, readback, or ready property."""
-        if not prop_name or not self.target_device:
+    def _read_connection_now(self, connection_factory, device_name: str, variable_name: str):
+        """Read the current value of one configured Proteus property."""
+        if not device_name or not variable_name:
             return None
         try:
-            if prop_name == self.target_variable:
-                conn = self._ensure_connection()
-            elif prop_name == self.readback_variable:
-                conn = self._ensure_readback_connection()
-            elif prop_name == self.ready_variable:
-                conn = self._ensure_ready_connection()
-            else:
-                conn = self._connect_property(prop_name)
+            conn = connection_factory()
             if not conn.is_connected:
                 return None
             return conn.get()
         except Exception:
             _debug_exception(
                 "ProteusScanDevControl: failed to read %s from %s",
-                prop_name,
-                self.target_device,
+                variable_name,
+                device_name,
             )
             return None
 
@@ -743,13 +785,27 @@ class ProteusScanDevControl(BaseTildaScanDeviceControl, DeferredInstanceObject):
 
         while time.perf_counter() <= deadline:
             if self.ready_variable:
-                ready_val = self._read_property_now(self.ready_variable)
+                ready_val = self._read_connection_now(
+                    self._ensure_ready_connection,
+                    self.ready_device or self.target_device,
+                    self.ready_variable,
+                )
                 if ready_val is not None and bool(ready_val):
                     return
             else:
                 readback_ok = True
-                readback_name = self.readback_variable or self.target_variable
-                readback_val = self._read_property_now(readback_name)
+                if self.readback_variable:
+                    readback_val = self._read_connection_now(
+                        self._ensure_readback_connection,
+                        self.readback_device or self.target_device,
+                        self.readback_variable,
+                    )
+                else:
+                    readback_val = self._read_connection_now(
+                        self._ensure_connection,
+                        self.target_device,
+                        self.target_variable,
+                    )
                 if readback_val is not None:
                     readback_ok = self._values_match(expected_value, readback_val)
                 elif self.readback_variable:

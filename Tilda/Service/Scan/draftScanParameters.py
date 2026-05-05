@@ -126,6 +126,8 @@ draft_scan_device = {
     'name': 'AD5781_Ser1',
     'type': 'AD5781',  # what type of device, e.g. AD5781(DAC) / Matisse (laser)
     'devClass': 'DAC',  # carrier class of the dev, e.g. DAC / Triton
+    'readback': '',
+    'ready': '',
     'stepUnitName': Units.line_volts.name,  # name if the SpecDataXAxisUnits
     'start': 0.0,  # in units of stepUnitName
     'stepSize': 1.0,  # in units of stepUnitName
@@ -138,7 +140,7 @@ draft_scan_device = {
     'stepSizeLimit': (7.628880920000002e-05, 15.0)
 }
 
-scan_dev_keys_list = ['name', 'type', 'devClass', 'stepUnitName', 'start', 'stepSize', 'stop',
+scan_dev_keys_list = ['name', 'type', 'devClass', 'readback', 'ready', 'stepUnitName', 'start', 'stepSize', 'stop',
                       'preScanSetPoint', 'postScanSetPoint', 'timeout_s']
 
 draft_trigger_pars = {'meas_trigger': {'type': getattr(TiTs, 'no_trigger')},
