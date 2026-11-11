@@ -93,6 +93,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.check_offset_per_track.stateChanged.connect(self.toggle_offset_per_track)
         self.edit_offset_order.editingFinished.connect(self.set_offset_order)
         self.check_qi.stateChanged.connect(self.toogle_qi)
+        self.check_individual_widths.stateChanged.connect(self.toggle_individual_widths)
         # self.check_hf_mixing.stateChanged.connect(self.toogle_hf_mixing)
         self.b_hf_mixing.clicked.connect(self.open_hf_mixing)
         self.b_racah.clicked.connect(self.set_racah)
@@ -322,6 +323,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
                               npeaks=self.s_npeaks.value(),
                               offset_per_track=self.check_offset_per_track.isChecked(),
                               offset_order=ast.literal_eval(self.edit_offset_order.text()),
+                              individual_widths=self.check_individual_widths.isChecked(),
                               qi_config=qi_config,
                               hf_config=hf_config)
         for file, run in zip(files, runs):
@@ -519,6 +521,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.s_npeaks.setValue(config['npeaks'])
         self.check_offset_per_track.setChecked(config['offset_per_track'])
         self.edit_offset_order.setText(str(config['offset_order']))
+        self.check_individual_widths.setChecked(config.get('individual_widths', False))
         self.check_qi.setChecked(config['qi_config']['qi'])
         self.check_hf_mixing.setChecked(config['hf_config']['enabled_l'] or config['hf_config']['enabled_u'])
 
@@ -537,6 +540,10 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
     def toggle_offset_per_track(self):
         for config in self.spectra_fit.configs:
             config['offset_per_track'] = self.check_offset_per_track.isChecked()
+
+    def toggle_individual_widths(self):
+        for config in self.spectra_fit.configs:
+            config['individual_widths'] = self.check_individual_widths.isChecked()
 
     def set_offset_order(self):
         try:

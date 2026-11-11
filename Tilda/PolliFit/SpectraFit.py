@@ -20,6 +20,7 @@ and create them in the 'PolliFit.Models' folder similar to the existing example.
 """
 
 import os
+import re
 import ast
 import sqlite3
 
@@ -34,10 +35,24 @@ import Tilda.PolliFit.Measurement.MeasLoad as MeasLoad
 from Tilda.PolliFit.Fitter import Fitter, print_colored
 import Tilda.PolliFit.Models.Spectrum as Spectrum
 import Tilda.PolliFit.Models.Convolved as Convolved
+from Tilda.PolliFit.Models.Splitter import HyperfineIndividual
+
 
 
 LEGACY_PARS = {'lor': 'Gamma', 'gamma': 'Gamma', 'gau': 'sigma'}
 
+
+
+def _to_builtin(obj):
+    """Convert numpy numbers/arrays (including nested ones) to regular Python numbers/lists,
+    so they can be stored in the database as a readable string."""
+    if isinstance(obj, (list, tuple)):
+        return [_to_builtin(o) for o in obj]
+    if isinstance(obj, np.ndarray):
+        return _to_builtin(obj.tolist())
+    if isinstance(obj, np.generic):
+        return obj.item()
+    return obj
 
 def _legacy_par_to_par(par):
     if par in list(LEGACY_PARS.keys()):
@@ -66,6 +81,8 @@ def gen_splitter_model(config, iso):
         return mod.HyperfineQI, (iso.I, iso.Jl, iso.Ju, iso.name, config['qi_config']['qi_path'])
     elif config['hf_config']['enabled_l'] or config['hf_config']['enabled_u']:
         return mod.HyperfineMixed, (iso.I, iso.Jl, iso.Ju, iso.name, config['hf_config'])
+    elif config.get('individual_widths', False):
+        return HyperfineIndividual, (iso.I, iso.Jl, iso.Ju, iso.name)
     else:
         return mod.Hyperfine, (iso.I, iso.Jl, iso.Ju, iso.name)
     raise ValueError('Specified splitter model not available.')
@@ -349,8 +366,9 @@ class SpectraFit:
             if load_from_isotopes:
                 return softw_gates
         try:
-            softw_gates = ast.literal_eval(pars[index][-1])
-        except ValueError:
+            gates_str = re.sub(r'np\.float\d*\(([^()]*)\)', r'\1', str(pars[index][-1]))
+            softw_gates = ast.literal_eval(gates_str)
+        except (ValueError, SyntaxError):
             print('softw_gates could not be loaded from FitPars, loading from selected run.')
         return softw_gates
 
@@ -453,10 +471,10 @@ class SpectraFit:
                 pars = ast.literal_eval(pars[0][0].replace('(np.nan,', '(0.0,').replace('(nan,', '(0.0,')
                                         .replace('(np.inf,', '(0.0,').replace('(inf,', '(0.0,'))
             new_pars = {**pars, **new_pars}
-            softw_gates = str(self.fitter.meas[i].softw_gates)
+            softw_gates = str(_to_builtin(self.fitter.meas[i].softw_gates))
             if 'inf' in softw_gates:
                 self.set_softw_gates(i, self.fitter.meas[i].softw_gates)
-                softw_gates = str(self.fitter.meas[i].softw_gates)
+                softw_gates = str(_to_builtin(self.fitter.meas[i].softw_gates))
             config['qi_config'].pop('qi_path', None)
             execute(cur, 'INSERT OR REPLACE INTO FitPars (file, run, softw_gates, config, pars)'
                          ' VALUES (?, ?, ?, ?, ?)', (file, run, softw_gates, str(config), str(new_pars)))
